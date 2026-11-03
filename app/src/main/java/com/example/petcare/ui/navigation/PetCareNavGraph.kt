@@ -42,27 +42,44 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
+import com.example.petcare.ui.health.RiwayatKesehatanDetailScreen
+import com.example.petcare.ui.health.RiwayatKesehatanFormScreen
+import com.example.petcare.ui.health.RiwayatKesehatanListScreen
+import com.example.petcare.ui.health.RiwayatKesehatanViewModel
 
 object PetCareRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val RIWAYAT_KESEHATAN_LIST = "riwayat_kesehatan_list"
+    const val RIWAYAT_KESEHATAN_DETAIL = "riwayat_kesehatan_detail/{recordId}"
+    const val RIWAYAT_KESEHATAN_FORM = "riwayat_kesehatan_form?recordId={recordId}"
+
+    fun createDetailRoute(recordId: String): String = "riwayat_kesehatan_detail/$recordId"
+    fun createFormRoute(recordId: String? = null): String =
+        if (recordId != null) "riwayat_kesehatan_form?recordId=$recordId" else "riwayat_kesehatan_form"
 }
 
 @Composable
 fun PetCareNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    healthViewModel: RiwayatKesehatanViewModel = viewModel()
 ) {
     val uiState by authViewModel.uiState.collectAsState()
+    val healthListState by healthViewModel.listUiState.collectAsState()
+    val healthDetailState by healthViewModel.detailUiState.collectAsState()
+    val healthFormState by healthViewModel.formUiState.collectAsState()
 
     NavHost(
         navController = navController,
@@ -117,6 +134,99 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.LOGIN) {
                         popUpTo(PetCareRoutes.HOME) { inclusive = true }
                     }
+                },
+                onNavigateToRiwayatKesehatan = {
+                    navController.navigate(PetCareRoutes.RIWAYAT_KESEHATAN_LIST)
+                },
+                onNavigateToRiwayatKesehatanForm = {
+                    healthViewModel.prepareFormForCreate()
+                    navController.navigate(PetCareRoutes.createFormRoute())
+                }
+            )
+        }
+
+        // ===== FITUR 4: RIWAYAT KESEHATAN (GIVENIA MARUDUR HASIANA) =====
+        composable(route = PetCareRoutes.RIWAYAT_KESEHATAN_LIST) {
+            RiwayatKesehatanListScreen(
+                uiState = healthListState,
+                onFilterSelected = healthViewModel::onFilterChange,
+                onSearchQueryChange = healthViewModel::onSearchQueryChange,
+                onNavigateToDetail = { recordId ->
+                    navController.navigate(PetCareRoutes.createDetailRoute(recordId))
+                },
+                onNavigateToCreate = {
+                    healthViewModel.prepareFormForCreate()
+                    navController.navigate(PetCareRoutes.createFormRoute())
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.RIWAYAT_KESEHATAN_DETAIL,
+            arguments = listOf(
+                navArgument("recordId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getString("recordId").orEmpty()
+            RiwayatKesehatanDetailScreen(
+                recordId = recordId,
+                uiState = healthDetailState,
+                onLoadDetail = healthViewModel::loadDetail,
+                onNavigateToEdit = { editId ->
+                    healthViewModel.prepareFormForEdit(editId)
+                    navController.navigate(PetCareRoutes.createFormRoute(editId))
+                },
+                onDeleteConfirm = { deleteId ->
+                    healthViewModel.deleteRecord(deleteId) {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.RIWAYAT_KESEHATAN_FORM,
+            arguments = listOf(
+                navArgument("recordId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getString("recordId")
+            RiwayatKesehatanFormScreen(
+                recordId = recordId,
+                uiState = healthFormState,
+                onPrepareForm = { id ->
+                    if (id != null) {
+                        healthViewModel.prepareFormForEdit(id)
+                    } else {
+                        healthViewModel.prepareFormForCreate()
+                    }
+                },
+                onPetNameChange = healthViewModel::onPetNameChange,
+                onPetTypeChange = healthViewModel::onPetTypeChange,
+                onJenisChange = healthViewModel::onJenisChange,
+                onJudulChange = healthViewModel::onJudulChange,
+                onTanggalChange = healthViewModel::onTanggalChange,
+                onDokterChange = healthViewModel::onDokterChange,
+                onCatatanMedisChange = healthViewModel::onCatatanMedisChange,
+                onBiayaChange = healthViewModel::onBiayaChange,
+                onStatusPemulihanChange = healthViewModel::onStatusPemulihanChange,
+                onSaveClick = {
+                    healthViewModel.saveForm {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -132,16 +242,17 @@ private data class ModulePreviewItem(
 )
 
 /**
- * Halaman Home Placeholder setelah berhasil Login — Dirancang persis dengan
- * nuansa layar tengah referensi ("For Buddy"):
- * - Header Sky Blue melengkung dengan pill search bar putih di dalamnya.
- * - Pill kategori hitam Ink & putih.
- * - Kartu pastel Lavender & Peach TANPA SHADOW (0.dp) dengan lingkaran putih `+`.
+ * Halaman Home setelah berhasil Login:
+ * - Tampilan visual 100% konsisten persis aslinya (tanpa perubahan layout/badge tambahan).
+ * - Kartu Riwayat Kesehatan (Givenia Marudur Hasiana) dapat diklik untuk membuka modul Riwayat Kesehatan.
+ * - Tombol `+` pada kartu Riwayat Kesehatan dapat diklik untuk membuka formulir input baru.
  */
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
     onLogoutClick: () -> Unit,
+    onNavigateToRiwayatKesehatan: () -> Unit = {},
+    onNavigateToRiwayatKesehatanForm: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val modules = listOf(
@@ -394,6 +505,8 @@ private fun HomePlaceholderScreen(
             // ===== DAFTAR KARTU PASTEL FLAT (LAVENDER & PEACH TANPA SHADOW) =====
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 modules.forEach { item ->
+                    val isHealthFeature = item.title == "Riwayat Kesehatan"
+
                     val cardBg = if (item.useWarmAccent) {
                         MaterialTheme.colorScheme.tertiaryContainer
                     } else {
@@ -410,6 +523,11 @@ private fun HomePlaceholderScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(22.dp))
                             .background(cardBg)
+                            .then(
+                                if (isHealthFeature) {
+                                    Modifier.clickable(onClick = onNavigateToRiwayatKesehatan)
+                                } else Modifier
+                            )
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -460,7 +578,12 @@ private fun HomePlaceholderScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface),
+                                .background(MaterialTheme.colorScheme.surface)
+                                .then(
+                                    if (isHealthFeature) {
+                                        Modifier.clickable(onClick = onNavigateToRiwayatKesehatanForm)
+                                    } else Modifier
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
