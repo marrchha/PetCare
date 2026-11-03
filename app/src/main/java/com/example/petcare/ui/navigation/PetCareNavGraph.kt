@@ -42,39 +42,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
-import com.example.petcare.ui.jadwal.JadwalVaksinDetailScreen
-import com.example.petcare.ui.jadwal.JadwalVaksinFormScreen
-import com.example.petcare.ui.jadwal.JadwalVaksinListScreen
-import com.example.petcare.ui.jadwal.JadwalVaksinViewModel
 
 object PetCareRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
-
-    // Rute Layar Fitur 1 (Jadwal Vaksin/Kontrol)
-    const val JADWAL_LIST = "jadwal_vaksin_list"
-    const val JADWAL_DETAIL = "jadwal_vaksin_detail/{jadwalId}"
-    const val JADWAL_FORM = "jadwal_vaksin_form"
-
-    fun jadwalDetail(jadwalId: String) = "jadwal_vaksin_detail/$jadwalId"
 }
 
 @Composable
 fun PetCareNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = viewModel(),
-    jadwalViewModel: JadwalVaksinViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val uiState by authViewModel.uiState.collectAsState()
 
@@ -131,82 +117,7 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.LOGIN) {
                         popUpTo(PetCareRoutes.HOME) { inclusive = true }
                     }
-                },
-                onNavigateToModule = { route ->
-                    navController.navigate(route)
                 }
-            )
-        }
-
-        // ===== FITUR 1: JADWAL VAKSIN/KONTROL (Sabitha Marsyarira Nayla) =====
-
-        // 1. Halaman List Jadwal (ViewPager + LazyColumn dengan Tab Status)
-        composable(route = PetCareRoutes.JADWAL_LIST) {
-            val jadwalUiState by jadwalViewModel.uiState.collectAsState()
-            JadwalVaksinListScreen(
-                uiState = jadwalUiState,
-                onSearchQueryChange = jadwalViewModel::onSearchQueryChange,
-                onToggleStatus = jadwalViewModel::toggleScheduleStatus,
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToAdd = {
-                    jadwalViewModel.initFormForAdd()
-                    navController.navigate(PetCareRoutes.JADWAL_FORM)
-                },
-                onNavigateToDetail = { id ->
-                    jadwalViewModel.selectSchedule(id)
-                    navController.navigate(PetCareRoutes.jadwalDetail(id))
-                },
-                onClearMessage = jadwalViewModel::clearMessage
-            )
-        }
-
-        // 2. Halaman Detail Jadwal
-        composable(
-            route = PetCareRoutes.JADWAL_DETAIL,
-            arguments = listOf(
-                navArgument("jadwalId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val jadwalId = backStackEntry.arguments?.getString("jadwalId").orEmpty()
-            val jadwalUiState by jadwalViewModel.uiState.collectAsState()
-            val targetJadwal = jadwalUiState.selectedSchedule
-                ?: jadwalUiState.schedules.find { it.id == jadwalId }
-
-            JadwalVaksinDetailScreen(
-                jadwal = targetJadwal,
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToEdit = { schedule ->
-                    jadwalViewModel.initFormForEdit(schedule)
-                    navController.navigate(PetCareRoutes.JADWAL_FORM)
-                },
-                onToggleStatus = { id ->
-                    jadwalViewModel.toggleScheduleStatus(id)
-                },
-                onDeleteSchedule = { id, onDeleted ->
-                    jadwalViewModel.deleteSchedule(id, onDeleted)
-                }
-            )
-        }
-
-        // 3. Halaman Form Tambah / Edit Jadwal
-        composable(route = PetCareRoutes.JADWAL_FORM) {
-            val jadwalUiState by jadwalViewModel.uiState.collectAsState()
-            JadwalVaksinFormScreen(
-                uiState = jadwalUiState,
-                onNamaHewanChange = jadwalViewModel::onFormNamaHewanChange,
-                onJenisChange = jadwalViewModel::onFormJenisChange,
-                onKeperluanChange = jadwalViewModel::onFormKeperluanChange,
-                onTanggalChange = jadwalViewModel::onFormTanggalChange,
-                onJamChange = jadwalViewModel::onFormJamChange,
-                onKlinikChange = jadwalViewModel::onFormKlinikChange,
-                onCatatanChange = jadwalViewModel::onFormCatatanChange,
-                onStatusChange = jadwalViewModel::onFormStatusChange,
-                onSaveClick = {
-                    jadwalViewModel.saveSchedule(uiState.currentUser?.id) {
-                        navController.popBackStack()
-                    }
-                },
-                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
@@ -217,8 +128,7 @@ private data class ModulePreviewItem(
     val owner: String,
     val description: String,
     val icon: ImageVector,
-    val useWarmAccent: Boolean = false,
-    val route: String? = null
+    val useWarmAccent: Boolean = false
 )
 
 /**
@@ -232,7 +142,6 @@ private data class ModulePreviewItem(
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
     onLogoutClick: () -> Unit,
-    onNavigateToModule: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val modules = listOf(
@@ -241,8 +150,7 @@ private fun HomePlaceholderScreen(
             owner = "Sabitha Marsyarira Nayla",
             description = "Tab Akan Datang & Selesai",
             icon = Icons.Outlined.CalendarMonth,
-            useWarmAccent = false,
-            route = PetCareRoutes.JADWAL_LIST
+            useWarmAccent = false
         ),
         ModulePreviewItem(
             title = "Dokter Hewan & Klinik",
@@ -502,11 +410,6 @@ private fun HomePlaceholderScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(22.dp))
                             .background(cardBg)
-                            .clickable {
-                                if (item.route != null) {
-                                    onNavigateToModule(item.route)
-                                }
-                            }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -552,7 +455,7 @@ private fun HomePlaceholderScreen(
                             }
                         }
 
-                        // Lingkaran putih `+` atau panah navigasi
+                        // Lingkaran putih `+` persis seperti kartu produk di referensi
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
