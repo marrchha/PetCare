@@ -3,21 +3,17 @@ package com.example.petcare.data.model
 import org.json.JSONObject
 import java.util.UUID
 
-/**
- * Model data untuk jadwal vaksin dan kontrol hewan peliharaan.
- * Mewakili tabel `jadwal_vaksin` pada Supabase.
- */
 data class JadwalVaksin(
     val id: String = UUID.randomUUID().toString(),
     val userId: String = "",
     val namaHewan: String = "",
-    val jenis: String = "Vaksin", // "Vaksin" atau "Kontrol"
-    val keperluan: String = "", // nama vaksin atau alasan kontrol
-    val tanggal: String = "", // contoh: "2026-11-15"
-    val jam: String = "", // contoh: "10:00"
+    val jenis: String = "Vaksin",
+    val keperluan: String = "",
+    val tanggal: String = "",
+    val jam: String = "",
     val klinik: String = "",
     val catatan: String = "",
-    val status: String = STATUS_AKAN_DATANG, // "Akan Datang" atau "Selesai"
+    val status: String = STATUS_AKAN_DATANG,
     val createdAt: String = ""
 ) {
     val isCompleted: Boolean

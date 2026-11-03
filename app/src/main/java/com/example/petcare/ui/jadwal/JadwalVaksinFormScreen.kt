@@ -52,11 +52,6 @@ import com.example.petcare.data.model.JadwalVaksin
 import java.util.Calendar
 import java.util.Locale
 
-/**
- * Halaman Form Tambah dan Edit Jadwal Vaksin/Kontrol.
- * Memungkinkan pengguna menginputkan nama hewan, jenis jadwal, keperluan/vaksin,
- * tanggal, jam, klinik, catatan, dan status.
- */
 @Composable
 fun JadwalVaksinFormScreen(
     uiState: JadwalVaksinUiState,
@@ -76,7 +71,6 @@ fun JadwalVaksinFormScreen(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
-    // Native DatePickerDialog
     val datePickerDialog = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
@@ -88,7 +82,6 @@ fun JadwalVaksinFormScreen(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    // Native TimePickerDialog
     val timePickerDialog = TimePickerDialog(
         context,
         { _, hourOfDay, minute ->
@@ -110,7 +103,7 @@ fun JadwalVaksinFormScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ===== TOP BAR =====
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,7 +139,6 @@ fun JadwalVaksinFormScreen(
                 }
             }
 
-            // ===== BANNER VALIDASI ERROR =====
             if (uiState.formValidationMessage != null) {
                 Row(
                     modifier = Modifier
@@ -179,7 +171,7 @@ fun JadwalVaksinFormScreen(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Pilihan Jenis Jadwal (Segmented Pill)
+
                 Text(
                     text = "Jenis Jadwal",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -224,7 +216,6 @@ fun JadwalVaksinFormScreen(
                     }
                 }
 
-                // 2. Nama Hewan
                 Text(
                     text = "Nama Hewan Peliharaan",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -250,7 +241,6 @@ fun JadwalVaksinFormScreen(
                     )
                 )
 
-                // 3. Nama Vaksin / Keperluan Kontrol
                 Text(
                     text = if (uiState.formJenis == JadwalVaksin.JENIS_VAKSIN) "Nama Vaksin" else "Keperluan Kontrol",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -281,7 +271,6 @@ fun JadwalVaksinFormScreen(
                     )
                 )
 
-                // 4. Tanggal & Jam (Bisa diklik untuk membuka Date/Time Picker)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -357,7 +346,6 @@ fun JadwalVaksinFormScreen(
                     }
                 }
 
-                // 5. Nama Klinik / Dokter
                 Text(
                     text = "Klinik / Rumah Sakit Hewan",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -383,7 +371,6 @@ fun JadwalVaksinFormScreen(
                     )
                 )
 
-                // 6. Catatan Tambahan
                 Text(
                     text = "Catatan Tambahan (Opsional)",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -410,7 +397,6 @@ fun JadwalVaksinFormScreen(
                     )
                 )
 
-                // 7. Status Jadwal
                 Text(
                     text = "Status Jadwal",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -457,7 +443,6 @@ fun JadwalVaksinFormScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Tombol Simpan
                 Button(
                     onClick = onSaveClick,
                     enabled = !uiState.formIsSubmitting,

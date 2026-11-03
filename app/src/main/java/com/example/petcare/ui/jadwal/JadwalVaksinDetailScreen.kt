@@ -55,11 +55,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.petcare.data.model.JadwalVaksin
 
-/**
- * Halaman Detail Jadwal Vaksin/Kontrol.
- * Menampilkan rincian lengkap jadwal serta opsi untuk menandai selesai,
- * mengedit jadwal, atau menghapus jadwal dari database.
- */
 @Composable
 fun JadwalVaksinDetailScreen(
     jadwal: JadwalVaksin?,
@@ -196,7 +191,6 @@ fun JadwalVaksinDetailScreen(
                 }
             }
 
-            // ===== KARTU UTAMA NAMA HEWAN & STATUS =====
             val isVaksin = jadwal.jenis.equals(JadwalVaksin.JENIS_VAKSIN, ignoreCase = true)
             val headerBg = if (isVaksin) {
                 MaterialTheme.colorScheme.secondaryContainer
@@ -279,7 +273,6 @@ fun JadwalVaksinDetailScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ===== RINCIAN INFORMASI JADWAL =====
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -327,14 +320,13 @@ fun JadwalVaksinDetailScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ===== TOMBOL AKSI UTAMA =====
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Tombol Toggle Selesai / Akan Datang
+
                 Button(
                     onClick = { onToggleStatus(jadwal.id) },
                     modifier = Modifier
@@ -360,7 +352,6 @@ fun JadwalVaksinDetailScreen(
                     )
                 }
 
-                // Tombol Ubah Jadwal
                 OutlinedButton(
                     onClick = { onNavigateToEdit(jadwal) },
                     modifier = Modifier

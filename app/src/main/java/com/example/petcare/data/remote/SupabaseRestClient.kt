@@ -12,10 +12,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/**
- * Klien HTTP PostgREST untuk berinteraksi langsung dengan REST API Supabase.
- * Menggunakan standard library Android tanpa membutuhkan dependensi eksternal tambahan.
- */
 class SupabaseRestClient {
 
     private fun getBaseRestUrl(): String {

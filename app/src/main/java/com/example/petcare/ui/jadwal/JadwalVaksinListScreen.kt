@@ -55,11 +55,6 @@ import com.example.petcare.data.model.JadwalVaksin
 import com.example.petcare.ui.jadwal.components.JadwalCard
 import kotlinx.coroutines.launch
 
-/**
- * Halaman List Jadwal Vaksin/Kontrol.
- * Menggunakan ViewPager (HorizontalPager) dengan tab status "Akan Datang" dan "Selesai",
- * serta menyajikan daftar jadwal dengan LazyColumn pada masing-masing tab.
- */
 @Composable
 fun JadwalVaksinListScreen(
     uiState: JadwalVaksinUiState,
@@ -108,7 +103,6 @@ fun JadwalVaksinListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ===== TOP HEADER BIRU SKY =====
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -152,7 +146,6 @@ fun JadwalVaksinListScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Search Bar Bersih
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = onSearchQueryChange,
@@ -197,7 +190,6 @@ fun JadwalVaksinListScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ===== TAB STATUS PILIH (AKAN DATANG / SELESAI) =====
             val akanDatangList = uiState.filteredSchedules(JadwalVaksin.STATUS_AKAN_DATANG)
             val selesaiList = uiState.filteredSchedules(JadwalVaksin.STATUS_SELESAI)
 
@@ -264,7 +256,6 @@ fun JadwalVaksinListScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ===== VIEWPAGER (HORIZONTAL PAGER) DENGAN LAZYCOLUMN DI TIAP TAB =====
             if (uiState.isLoading && uiState.schedules.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -300,7 +291,7 @@ fun JadwalVaksinListScreen(
                                 start = 20.dp,
                                 end = 20.dp,
                                 top = 4.dp,
-                                bottom = 80.dp // Spasi untuk FAB
+                                bottom = 80.dp
                             ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {

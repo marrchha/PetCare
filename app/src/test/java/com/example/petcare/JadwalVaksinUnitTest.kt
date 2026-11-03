@@ -43,7 +43,7 @@ class JadwalVaksinUnitTest {
         val initialList = repository.getJadwalList("user-demo-001").getOrThrow()
         assertTrue(initialList.isNotEmpty())
 
-        // 1. INSERT
+
         val newId = UUID.randomUUID().toString()
         val testJadwal = JadwalVaksin(
             id = newId,
@@ -64,13 +64,13 @@ class JadwalVaksinUnitTest {
         assertNotNull(afterInsert)
         assertEquals("Luna (Kucing)", afterInsert?.namaHewan)
 
-        // 2. TOGGLE STATUS (Akan Datang -> Selesai)
+
         val toggleResult = repository.toggleStatus(newId)
         assertTrue(toggleResult.isSuccess)
         val toggled = repository.getJadwalById(newId).getOrThrow()
         assertEquals(JadwalVaksin.STATUS_SELESAI, toggled?.status)
 
-        // 3. UPDATE
+
         val updatedSchedule = toggled!!.copy(
             klinik = "Klinik Hewan Modern",
             catatan = "Catatan telah diupdate"
@@ -81,7 +81,7 @@ class JadwalVaksinUnitTest {
         assertEquals("Klinik Hewan Modern", afterUpdate?.klinik)
         assertEquals("Catatan telah diupdate", afterUpdate?.catatan)
 
-        // 4. DELETE
+
         val deleteResult = repository.deleteJadwal(newId)
         assertTrue(deleteResult.isSuccess)
         val afterDelete = repository.getJadwalById(newId).getOrThrow()

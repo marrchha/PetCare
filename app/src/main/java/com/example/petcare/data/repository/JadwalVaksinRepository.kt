@@ -7,16 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/**
- * Repository untuk mengelola data jadwal vaksin dan kontrol hewan peliharaan.
- * Mendukung sinkronisasi langsung ke Supabase (`jadwal_vaksin`) serta memiliki
- * local fallback cache in-memory agar aplikasi tetap dapat didemonstrasikan dengan lancar.
- */
 class JadwalVaksinRepository(
     private val restClient: SupabaseRestClient = SupabaseRestClient()
 ) {
     companion object {
-        // In-memory data store yang disiapkan dengan data awal realistis
         private val localCache = mutableListOf(
             JadwalVaksin(
                 id = "jv-001",
@@ -74,12 +68,10 @@ class JadwalVaksinRepository(
             try {
                 if (SupabaseConfig.isConfigured) {
                     val remoteList = restClient.fetchJadwalList(userId)
-                    // Sinkronisasi cache lokal
                     localCache.clear()
                     localCache.addAll(remoteList)
                     Result.success(remoteList)
                 } else {
-                    // Gunakan data local cache jika Supabase belum dikonfigurasi
                     val filtered = if (!userId.isNullOrBlank()) {
                         localCache.filter { it.userId == userId || it.userId == "user-demo-001" }
                     } else {
@@ -88,7 +80,6 @@ class JadwalVaksinRepository(
                     Result.success(filtered)
                 }
             } catch (e: Exception) {
-                // Jika koneksi remote gagal (misal tidak ada internet), kembalikan local cache
                 Result.success(localCache.toList())
             }
         }
@@ -118,7 +109,6 @@ class JadwalVaksinRepository(
                         localCache.add(0, inserted)
                         return@withContext Result.success(inserted)
                     } catch (e: Exception) {
-                        // Jika Supabase gagal, simpan ke local cache agar pengguna tetap bisa melihat
                         localCache.add(0, prepared)
                         return@withContext Result.success(prepared)
                     }
@@ -163,7 +153,6 @@ class JadwalVaksinRepository(
                 try {
                     restClient.deleteJadwal(id)
                 } catch (_: Exception) {
-                    // Abaikan jika network gagal dan tetap berhasil secara lokal
                 }
             }
             Result.success(Unit)

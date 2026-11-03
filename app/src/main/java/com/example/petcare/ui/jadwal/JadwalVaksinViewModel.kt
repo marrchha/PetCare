@@ -11,9 +11,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/**
- * State UI untuk modul Fitur 1: Jadwal Vaksin/Kontrol.
- */
 data class JadwalVaksinUiState(
     val isLoading: Boolean = false,
     val schedules: List<JadwalVaksin> = emptyList(),
@@ -22,8 +19,7 @@ data class JadwalVaksinUiState(
     val userMessage: String? = null,
     val errorMessage: String? = null,
 
-    // State formulir Tambah/Edit Jadwal
-    val formId: String? = null, // null jika Tambah, terisi ID jika Edit
+    val formId: String? = null,
     val formNamaHewan: String = "",
     val formJenis: String = JadwalVaksin.JENIS_VAKSIN,
     val formKeperluan: String = "",
@@ -35,9 +31,6 @@ data class JadwalVaksinUiState(
     val formIsSubmitting: Boolean = false,
     val formValidationMessage: String? = null
 ) {
-    /**
-     * Memfilter daftar jadwal berdasarkan tab status dan kata kunci pencarian.
-     */
     fun filteredSchedules(forStatus: String): List<JadwalVaksin> {
         val query = searchQuery.trim().lowercase()
         return schedules.filter { item ->
@@ -51,10 +44,6 @@ data class JadwalVaksinUiState(
     }
 }
 
-/**
- * ViewModel untuk mengelola state dan alur data Fitur 1 (Jadwal Vaksin/Kontrol).
- * Memenuhi poin ceklis validasi evaluasi proyek: ViewModel Class: JadwalVaksinViewModel.
- */
 class JadwalVaksinViewModel(
     private val repository: JadwalVaksinRepository = JadwalVaksinRepository()
 ) : ViewModel() {
@@ -76,7 +65,6 @@ class JadwalVaksinViewModel(
                         it.copy(
                             isLoading = false,
                             schedules = list,
-                            // Update selected schedule jika sedang dibuka
                             selectedSchedule = list.find { s -> s.id == it.selectedSchedule?.id }
                                 ?: it.selectedSchedule
                         )
@@ -116,7 +104,6 @@ class JadwalVaksinViewModel(
         _uiState.update { it.copy(userMessage = null, errorMessage = null) }
     }
 
-    // ========== LOGIKA FORM INPUT / EDIT ==========
 
     fun initFormForAdd() {
         _uiState.update {
@@ -255,7 +242,6 @@ class JadwalVaksinViewModel(
                     }
                 )
             } else {
-                // UPDATE (Ubah Jadwal yang Ada)
                 val updatedJadwal = JadwalVaksin(
                     id = state.formId,
                     userId = effectiveUserId,
@@ -295,7 +281,6 @@ class JadwalVaksinViewModel(
         }
     }
 
-    // ========== TOGGLE STATUS & DELETE ==========
 
     fun toggleScheduleStatus(id: String) {
         viewModelScope.launch {

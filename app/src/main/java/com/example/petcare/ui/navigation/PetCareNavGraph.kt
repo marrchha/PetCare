@@ -65,7 +65,6 @@ object PetCareRoutes {
     const val REGISTER = "register"
     const val HOME = "home"
 
-    // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
     const val HEALTH_LIST = "health_list"
     const val HEALTH_DETAIL = "health_detail/{recordId}"
     const val HEALTH_FORM = "health_form?recordId={recordId}"
@@ -74,7 +73,6 @@ object PetCareRoutes {
     fun healthFormRoute(recordId: String? = null) =
         if (recordId == null) "health_form" else "health_form?recordId=$recordId"
 
-    // Route Fitur 5: Data Hewan (Alchalisa Fathinna - 245150407111066)
     const val PET_LIST = "pet_list"
     const val PET_DETAIL = "pet_detail/{petId}"
     const val PET_FORM = "pet_form?petId={petId}"
@@ -161,7 +159,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 4: RIWAYAT KESEHATAN (3 HALAMAN MULTI-SCREEN) =====
         composable(route = PetCareRoutes.HEALTH_LIST) {
             RiwayatKesehatanListScreen(
                 uiState = healthListUiState,
@@ -245,7 +242,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 5: DATA HEWAN (3 HALAMAN MULTI-SCREEN) =====
         composable(route = PetCareRoutes.PET_LIST) {
             PetListScreen(
                 uiState = petUiState,
@@ -333,12 +329,6 @@ private data class ModulePreviewItem(
     val onClick: (() -> Unit)? = null
 )
 
-/**
- * Halaman Beranda setelah berhasil Login:
- * - Tanpa bagian "Kategori Hewan", langsung menampilkan "Fitur Utama Kelompok".
- * - Kartu ke-4 ("Riwayat Kesehatan") dan Kartu ke-5 ("Data Profil Hewan") keduanya
- *   bisa langsung diklik menuju halaman fiturnya masing-masing.
- */
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
@@ -397,7 +387,6 @@ private fun HomePlaceholderScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            // ===== HEADER SKY BLUE MELENGKUNG ALA "For Buddy" =====
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -522,7 +511,6 @@ private fun HomePlaceholderScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ===== DAFTAR KARTU PASTEL FLAT (LAVENDER & PEACH TANPA SHADOW) =====
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 modules.forEach { item ->
                     val cardBg = if (item.useWarmAccent) {
@@ -593,7 +581,6 @@ private fun HomePlaceholderScreen(
                             }
                         }
 
-                        // Lingkaran putih `+` persis seperti kartu produk di referensi
                         Box(
                             modifier = Modifier
                                 .size(34.dp)

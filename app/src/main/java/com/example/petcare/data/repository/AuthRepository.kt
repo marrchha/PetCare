@@ -4,11 +4,6 @@ import com.example.petcare.data.model.UserProfile
 import kotlinx.coroutines.delay
 import java.util.UUID
 
-/**
- * Repository untuk mengelola autentikasi pengguna (Login & Register).
- * Saat ini menggunakan data simulasi (mock) in-memory dan siap disambungkan
- * langsung ke Supabase Auth (`supabase.auth.signInWith(Email)` / `signUpWith(Email)`).
- */
 class AuthRepository {
 
     private data class AccountRecord(
@@ -33,7 +28,7 @@ class AuthRepository {
     }
 
     suspend fun login(email: String, password: String): Result<UserProfile> {
-        delay(700) // Simulasi jaringan
+        delay(700)
         val normalizedEmail = email.trim().lowercase()
         val matchedAccount = registeredAccounts.find {
             it.profile.email.lowercase() == normalizedEmail && it.password == password
