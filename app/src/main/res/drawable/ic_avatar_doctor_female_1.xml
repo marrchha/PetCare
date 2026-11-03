@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#E0F2FE"
+        android:pathData="M48,48m-44,0a44,44 0,1 1,88 0a44,44 0,1 1,-88 0" />
+    <!-- Hair -->
+    <path
+        android:fillColor="#78350F"
+        android:pathData="M32,46 C30,32 36,22 48,22 C60,22 66,32 64,46 C60,40 56,38 48,38 C40,38 36,40 32,46 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M37,42 C37,35 42,32 48,32 C54,32 59,35 59,42 C59,51 54,58 48,58 C42,58 37,51 37,42 Z" />
+    <!-- Doctor Coat -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,84 C24,68 36,60 48,60 C60,60 72,68 72,84 L24,84 Z" />
+    <!-- Inner Shirt Teal -->
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M43,60 L53,60 L50,68 L46,68 Z" />
+    <!-- Stethoscope -->
+    <path
+        android:strokeColor="#334155"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,64 C40,74 46,78 48,78 C50,78 56,74 56,64 M48,78 L48,82" />
+    <!-- Stethoscope Bell -->
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M48,82m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+</vector>

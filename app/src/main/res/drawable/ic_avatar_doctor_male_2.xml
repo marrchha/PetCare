@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle Peach -->
+    <path
+        android:fillColor="#FFEDD5"
+        android:pathData="M48,48m-44,0a44,44 0,1 1,88 0a44,44 0,1 1,-88 0" />
+    <!-- Hair Wavy -->
+    <path
+        android:fillColor="#451A03"
+        android:pathData="M33,38 C33,25 39,20 48,20 C57,20 63,25 63,38 C60,32 54,30 48,30 C42,30 36,32 33,38 Z" />
+    <!-- Glasses Rim -->
+    <path
+        android:strokeColor="#0F172A"
+        android:strokeWidth="1.8"
+        android:pathData="M40,42 L46,42 M50,42 L56,42 M46,42 L50,42" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M37,42 C37,36 42,32 48,32 C54,32 59,36 59,42 C59,50 54,58 48,58 C42,58 37,50 37,42 Z" />
+    <!-- Doctor Coat White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,84 C24,68 36,60 48,60 C60,60 72,68 72,84 L24,84 Z" />
+    <!-- Stethoscope -->
+    <path
+        android:strokeColor="#0369A1"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,64 C40,73 45,77 48,77 C51,77 56,73 56,64 M48,77 L48,81" />
+</vector>

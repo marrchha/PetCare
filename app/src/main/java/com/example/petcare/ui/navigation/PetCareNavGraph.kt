@@ -18,9 +18,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalHospital
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -51,37 +53,22 @@ import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
-import com.example.petcare.ui.health.RiwayatKesehatanDetailScreen
-import com.example.petcare.ui.health.RiwayatKesehatanFormScreen
-import com.example.petcare.ui.health.RiwayatKesehatanListScreen
-import com.example.petcare.ui.health.RiwayatKesehatanViewModel
-import com.example.petcare.ui.pet.PetDetailScreen
-import com.example.petcare.ui.pet.PetFormScreen
-import com.example.petcare.ui.pet.PetListScreen
-import com.example.petcare.ui.pet.PetViewModel
+import com.example.petcare.ui.doctor.DoctorClinicListScreen
+import com.example.petcare.ui.doctor.DoctorClinicViewModel
+import com.example.petcare.ui.doctor.DoctorDetailScreen
+import com.example.petcare.ui.doctor.DoctorFormScreen
 
 object PetCareRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val DOCTOR_CLINIC_LIST = "doctor_clinic_list"
+    const val DOCTOR_DETAIL = "doctor_detail/{doctorId}"
+    const val DOCTOR_FORM = "doctor_form?doctorId={doctorId}"
 
-    // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
-    const val HEALTH_LIST = "health_list"
-    const val HEALTH_DETAIL = "health_detail/{recordId}"
-    const val HEALTH_FORM = "health_form?recordId={recordId}"
-
-    fun healthDetailRoute(recordId: String) = "health_detail/$recordId"
-    fun healthFormRoute(recordId: String? = null) =
-        if (recordId == null) "health_form" else "health_form?recordId=$recordId"
-
-    // Route Fitur 5: Data Hewan (Alchalisa Fathinna - 245150407111066)
-    const val PET_LIST = "pet_list"
-    const val PET_DETAIL = "pet_detail/{petId}"
-    const val PET_FORM = "pet_form?petId={petId}"
-
-    fun petDetailRoute(petId: String) = "pet_detail/$petId"
-    fun petFormRoute(petId: String? = null) =
-        if (petId == null) "pet_form" else "pet_form?petId=$petId"
+    fun doctorDetail(doctorId: String) = "doctor_detail/$doctorId"
+    fun doctorForm(doctorId: String? = null) =
+        if (doctorId != null) "doctor_form?doctorId=$doctorId" else "doctor_form"
 }
 
 @Composable
@@ -89,14 +76,9 @@ fun PetCareNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = viewModel(),
-    healthViewModel: RiwayatKesehatanViewModel = viewModel(),
-    petViewModel: PetViewModel = viewModel()
+    doctorClinicViewModel: DoctorClinicViewModel = viewModel()
 ) {
-    val authUiState by authViewModel.uiState.collectAsState()
-    val healthListUiState by healthViewModel.listUiState.collectAsState()
-    val healthDetailUiState by healthViewModel.detailUiState.collectAsState()
-    val healthFormUiState by healthViewModel.formUiState.collectAsState()
-    val petUiState by petViewModel.uiState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
 
     NavHost(
         navController = navController,
@@ -105,7 +87,7 @@ fun PetCareNavGraph(
     ) {
         composable(route = PetCareRoutes.LOGIN) {
             LoginScreen(
-                uiState = authUiState,
+                uiState = uiState,
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
                 onLoginClick = authViewModel::login,
@@ -124,7 +106,7 @@ fun PetCareNavGraph(
 
         composable(route = PetCareRoutes.REGISTER) {
             RegisterScreen(
-                uiState = authUiState,
+                uiState = uiState,
                 onFullNameChange = authViewModel::onFullNameChange,
                 onEmailChange = authViewModel::onEmailChange,
                 onPhoneNumberChange = authViewModel::onPhoneNumberChange,
@@ -145,180 +127,71 @@ fun PetCareNavGraph(
 
         composable(route = PetCareRoutes.HOME) {
             HomePlaceholderScreen(
-                currentUser = authUiState.currentUser,
-                onOpenHealthFeatureClick = {
-                    navController.navigate(PetCareRoutes.HEALTH_LIST)
-                },
-                onOpenPetFeatureClick = {
-                    navController.navigate(PetCareRoutes.PET_LIST)
-                },
+                currentUser = uiState.currentUser,
                 onLogoutClick = {
                     authViewModel.logout()
                     navController.navigate(PetCareRoutes.LOGIN) {
                         popUpTo(PetCareRoutes.HOME) { inclusive = true }
                     }
+                },
+                onNavigateToDoctorClinic = {
+                    navController.navigate(PetCareRoutes.DOCTOR_CLINIC_LIST)
                 }
             )
         }
 
-        // ===== FITUR 4: RIWAYAT KESEHATAN (3 HALAMAN MULTI-SCREEN) =====
-        composable(route = PetCareRoutes.HEALTH_LIST) {
-            RiwayatKesehatanListScreen(
-                uiState = healthListUiState,
-                onFilterSelected = healthViewModel::onFilterChange,
-                onSearchQueryChange = healthViewModel::onSearchQueryChange,
-                onNavigateToDetail = { recordId ->
-                    navController.navigate(PetCareRoutes.healthDetailRoute(recordId))
+        // ==========================================
+        // ROUTES FITUR 2: DOKTER HEWAN & KLINIK
+        // ==========================================
+
+        composable(route = PetCareRoutes.DOCTOR_CLINIC_LIST) {
+            DoctorClinicListScreen(
+                viewModel = doctorClinicViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDoctorDetail = { doctorId ->
+                    navController.navigate(PetCareRoutes.doctorDetail(doctorId))
                 },
-                onNavigateToCreate = {
-                    navController.navigate(PetCareRoutes.healthFormRoute(null))
+                onNavigateToAddDoctor = {
+                    navController.navigate(PetCareRoutes.doctorForm(null))
                 },
-                onNavigateBack = {
-                    navController.popBackStack()
+                onNavigateToEditDoctor = { doctorId ->
+                    navController.navigate(PetCareRoutes.doctorForm(doctorId))
                 }
             )
         }
 
         composable(
-            route = PetCareRoutes.HEALTH_DETAIL,
+            route = PetCareRoutes.DOCTOR_DETAIL,
             arguments = listOf(
-                navArgument("recordId") { type = NavType.StringType }
+                navArgument("doctorId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val recordId = backStackEntry.arguments?.getString("recordId").orEmpty()
-            RiwayatKesehatanDetailScreen(
-                recordId = recordId,
-                uiState = healthDetailUiState,
-                onLoadDetail = healthViewModel::loadDetail,
-                onNavigateToEdit = { idToEdit ->
-                    navController.navigate(PetCareRoutes.healthFormRoute(idToEdit))
-                },
-                onDeleteConfirm = { idToDelete ->
-                    healthViewModel.deleteRecord(idToDelete) {
-                        navController.popBackStack()
-                    }
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
+            val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
+            DoctorDetailScreen(
+                doctorId = doctorId,
+                viewModel = doctorClinicViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { id ->
+                    navController.navigate(PetCareRoutes.doctorForm(id))
                 }
             )
         }
 
         composable(
-            route = PetCareRoutes.HEALTH_FORM,
+            route = PetCareRoutes.DOCTOR_FORM,
             arguments = listOf(
-                navArgument("recordId") {
+                navArgument("doctorId") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val recordId = backStackEntry.arguments?.getString("recordId")
-            RiwayatKesehatanFormScreen(
-                recordId = recordId,
-                uiState = healthFormUiState,
-                onPrepareForm = { id ->
-                    if (id.isNullOrBlank()) {
-                        healthViewModel.prepareFormForCreate()
-                    } else {
-                        healthViewModel.prepareFormForEdit(id)
-                    }
-                },
-                onPetNameChange = healthViewModel::onPetNameChange,
-                onPetTypeChange = healthViewModel::onPetTypeChange,
-                onJenisChange = healthViewModel::onJenisChange,
-                onJudulChange = healthViewModel::onJudulChange,
-                onTanggalChange = healthViewModel::onTanggalChange,
-                onDokterChange = healthViewModel::onDokterChange,
-                onCatatanMedisChange = healthViewModel::onCatatanMedisChange,
-                onBiayaChange = healthViewModel::onBiayaChange,
-                onStatusPemulihanChange = healthViewModel::onStatusPemulihanChange,
-                onSaveClick = {
-                    healthViewModel.saveForm {
-                        navController.popBackStack()
-                    }
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // ===== FITUR 5: DATA HEWAN (3 HALAMAN MULTI-SCREEN) =====
-        composable(route = PetCareRoutes.PET_LIST) {
-            PetListScreen(
-                uiState = petUiState,
-                onSearchQueryChange = petViewModel::onSearchQueryChange,
-                onSpeciesFilterChange = petViewModel::onSpeciesFilterChange,
-                onPetClick = { petId ->
-                    navController.navigate(PetCareRoutes.petDetailRoute(petId))
-                },
-                onAddPetClick = {
-                    petViewModel.prepareForm(null)
-                    navController.navigate(PetCareRoutes.petFormRoute(null))
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        composable(
-            route = PetCareRoutes.PET_DETAIL,
-            arguments = listOf(
-                navArgument("petId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val petId = backStackEntry.arguments?.getString("petId").orEmpty()
-            val selectedPet = petViewModel.getPetById(petId)
-
-            PetDetailScreen(
-                pet = selectedPet,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onEditClick = { idToEdit ->
-                    petViewModel.prepareForm(idToEdit)
-                    navController.navigate(PetCareRoutes.petFormRoute(idToEdit))
-                },
-                onDeleteConfirm = { idToDelete ->
-                    petViewModel.deletePet(idToDelete)
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        composable(
-            route = PetCareRoutes.PET_FORM,
-            arguments = listOf(
-                navArgument("petId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
-            )
-        ) {
-            PetFormScreen(
-                uiState = petUiState,
-                onNameChange = petViewModel::onFormNameChange,
-                onSpeciesChange = petViewModel::onFormSpeciesChange,
-                onBreedChange = petViewModel::onFormBreedChange,
-                onGenderChange = petViewModel::onFormGenderChange,
-                onAgeMonthsChange = petViewModel::onFormAgeMonthsChange,
-                onWeightKgChange = petViewModel::onFormWeightKgChange,
-                onColorChange = petViewModel::onFormColorChange,
-                onPhotoUriChange = petViewModel::onFormPhotoUriChange,
-                onNotesChange = petViewModel::onFormNotesChange,
-                onSaveClick = {
-                    val savedId = petViewModel.savePet()
-                    if (savedId != null) {
-                        navController.popBackStack()
-                    }
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
+            val doctorId = backStackEntry.arguments?.getString("doctorId")
+            DoctorFormScreen(
+                doctorId = doctorId,
+                viewModel = doctorClinicViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
@@ -330,21 +203,22 @@ private data class ModulePreviewItem(
     val description: String,
     val icon: ImageVector,
     val useWarmAccent: Boolean = false,
-    val onClick: (() -> Unit)? = null
+    val isReady: Boolean = false
 )
 
 /**
- * Halaman Beranda setelah berhasil Login:
- * - Tanpa bagian "Kategori Hewan", langsung menampilkan "Fitur Utama Kelompok".
- * - Kartu ke-4 ("Riwayat Kesehatan") dan Kartu ke-5 ("Data Profil Hewan") keduanya
- *   bisa langsung diklik menuju halaman fiturnya masing-masing.
+ * Halaman Beranda (Home) PetCare — Dirancang persis dengan
+ * nuansa layar tengah referensi ("For Buddy"):
+ * - Header Sky Blue melengkung dengan pill search bar putih di dalamnya.
+ * - Pill kategori hewan.
+ * - Kartu-kartu modul proyek kelompok, di mana modul Dokter Hewan & Klinik
+ *   sudah aktif dan dapat langsung dibuka.
  */
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
-    onOpenHealthFeatureClick: () -> Unit,
-    onOpenPetFeatureClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onNavigateToDoctorClinic: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val modules = listOf(
@@ -353,21 +227,24 @@ private fun HomePlaceholderScreen(
             owner = "Sabitha Marsyarira Nayla",
             description = "Tab Akan Datang & Selesai",
             icon = Icons.Outlined.CalendarMonth,
-            useWarmAccent = false
+            useWarmAccent = false,
+            isReady = false
         ),
         ModulePreviewItem(
             title = "Dokter Hewan & Klinik",
             owner = "Andien Oktriarahmah S.",
-            description = "Konsultasi & Riwayat Kontak",
+            description = "Manajemen dokter hewan, jadwal & layanan klinik",
             icon = Icons.Outlined.LocalHospital,
-            useWarmAccent = true
+            useWarmAccent = true,
+            isReady = true // Fitur 2 aktif & siap diakses
         ),
         ModulePreviewItem(
             title = "Jadwal Makan Harian",
             owner = "Jeanete Arthika Lorentz R.",
             description = "Jam makan, jenis & porsi",
             icon = Icons.Outlined.Restaurant,
-            useWarmAccent = false
+            useWarmAccent = false,
+            isReady = false
         ),
         ModulePreviewItem(
             title = "Riwayat Kesehatan",
@@ -375,7 +252,7 @@ private fun HomePlaceholderScreen(
             description = "Filter Sakit, Obat & Operasi",
             icon = Icons.Outlined.MedicalServices,
             useWarmAccent = true,
-            onClick = onOpenHealthFeatureClick
+            isReady = false
         ),
         ModulePreviewItem(
             title = "Data Profil Hewan",
@@ -383,7 +260,7 @@ private fun HomePlaceholderScreen(
             description = "Grid foto hewan & pencarian",
             icon = Icons.Outlined.Pets,
             useWarmAccent = false,
-            onClick = onOpenPetFeatureClick
+            isReady = false
         )
     )
 
@@ -487,11 +364,13 @@ private fun HomePlaceholderScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // Pill Search Bar Putih Bersih di dalam Header Sky Blue
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surface)
+                        .clickable(onClick = onNavigateToDoctorClinic)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -503,7 +382,7 @@ private fun HomePlaceholderScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Cari jadwal, dokter hewan, atau riwayat...",
+                        text = "Cari jadwal, dokter hewan, atau klinik...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -512,19 +391,104 @@ private fun HomePlaceholderScreen(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            Text(
-                text = "Fitur Utama Kelompok",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            // ===== KATEGORI PILL HITAM INK & PUTIH (FLAT) =====
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Kategori Hewan",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "5 Modul >",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ===== DAFTAR KARTU PASTEL FLAT (LAVENDER & PEACH TANPA SHADOW) =====
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Pill aktif hitam Ink
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Pets,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Kucing",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+
+                // Pill non-aktif flat
+                listOf("Anjing", "Kelinci").forEach { label ->
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Fitur Utama Kelompok",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Ketuk modul aktif",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ===== DAFTAR KARTU MODUL =====
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 modules.forEach { item ->
+                    val isDoctorClinicModule = item.isReady
                     val cardBg = if (item.useWarmAccent) {
                         MaterialTheme.colorScheme.tertiaryContainer
                     } else {
@@ -541,13 +505,11 @@ private fun HomePlaceholderScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(22.dp))
                             .background(cardBg)
-                            .then(
-                                if (item.onClick != null) {
-                                    Modifier.clickable(onClick = item.onClick)
-                                } else {
-                                    Modifier
+                            .clickable(enabled = isDoctorClinicModule) {
+                                if (isDoctorClinicModule) {
+                                    onNavigateToDoctorClinic()
                                 }
-                            )
+                            }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -572,13 +534,32 @@ private fun HomePlaceholderScreen(
                             }
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = cardContent
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = cardContent
+                                    )
+                                    if (isDoctorClinicModule) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.surface)
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "Aktif",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold
+                                                ),
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
                                 Text(
                                     text = item.owner,
                                     style = MaterialTheme.typography.labelSmall,
@@ -593,17 +574,18 @@ private fun HomePlaceholderScreen(
                             }
                         }
 
-                        // Lingkaran putih `+` persis seperti kartu produk di referensi
+                        // Icon aksi di kanan
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surface),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Add,
-                                contentDescription = null,
+                                imageVector = if (isDoctorClinicModule) Icons.AutoMirrored.Outlined.ArrowForward
+                                else Icons.Outlined.Add,
+                                contentDescription = if (isDoctorClinicModule) "Buka Modul" else "Detail",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
