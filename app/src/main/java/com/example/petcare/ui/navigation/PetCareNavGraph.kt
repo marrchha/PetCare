@@ -51,10 +51,18 @@ import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
+import com.example.petcare.ui.doctor.DoctorClinicListScreen
+import com.example.petcare.ui.doctor.DoctorClinicViewModel
+import com.example.petcare.ui.doctor.DoctorDetailScreen
+import com.example.petcare.ui.doctor.DoctorFormScreen
 import com.example.petcare.ui.health.RiwayatKesehatanDetailScreen
 import com.example.petcare.ui.health.RiwayatKesehatanFormScreen
 import com.example.petcare.ui.health.RiwayatKesehatanListScreen
 import com.example.petcare.ui.health.RiwayatKesehatanViewModel
+import com.example.petcare.ui.jadwal.JadwalVaksinDetailScreen
+import com.example.petcare.ui.jadwal.JadwalVaksinFormScreen
+import com.example.petcare.ui.jadwal.JadwalVaksinListScreen
+import com.example.petcare.ui.jadwal.JadwalVaksinViewModel
 import com.example.petcare.ui.pet.PetDetailScreen
 import com.example.petcare.ui.pet.PetFormScreen
 import com.example.petcare.ui.pet.PetListScreen
@@ -65,6 +73,23 @@ object PetCareRoutes {
     const val REGISTER = "register"
     const val HOME = "home"
 
+    // Route Fitur 1: Jadwal Vaksin & Kontrol (Sabitha Marsyarira Nayla - 245150401111032)
+    const val JADWAL_LIST = "jadwal_list"
+    const val JADWAL_DETAIL = "jadwal_detail/{scheduleId}"
+    const val JADWAL_FORM = "jadwal_form"
+
+    fun jadwalDetailRoute(scheduleId: String) = "jadwal_detail/$scheduleId"
+
+    // Route Fitur 2: Dokter Hewan & Klinik (Andien Oktriarahmah Syarifah - 245150400111046)
+    const val DOCTOR_LIST = "doctor_list"
+    const val DOCTOR_DETAIL = "doctor_detail/{doctorId}"
+    const val DOCTOR_FORM = "doctor_form?doctorId={doctorId}"
+
+    fun doctorDetailRoute(doctorId: String) = "doctor_detail/$doctorId"
+    fun doctorFormRoute(doctorId: String? = null) =
+        if (doctorId == null) "doctor_form" else "doctor_form?doctorId=$doctorId"
+
+    // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
     const val HEALTH_LIST = "health_list"
     const val HEALTH_DETAIL = "health_detail/{recordId}"
     const val HEALTH_FORM = "health_form?recordId={recordId}"
@@ -73,6 +98,7 @@ object PetCareRoutes {
     fun healthFormRoute(recordId: String? = null) =
         if (recordId == null) "health_form" else "health_form?recordId=$recordId"
 
+    // Route Fitur 5: Data Hewan (Alchalisa Fathinna - 245150407111066)
     const val PET_LIST = "pet_list"
     const val PET_DETAIL = "pet_detail/{petId}"
     const val PET_FORM = "pet_form?petId={petId}"
@@ -87,10 +113,13 @@ fun PetCareNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = viewModel(),
+    jadwalViewModel: JadwalVaksinViewModel = viewModel(),
+    doctorViewModel: DoctorClinicViewModel = viewModel(),
     healthViewModel: RiwayatKesehatanViewModel = viewModel(),
     petViewModel: PetViewModel = viewModel()
 ) {
     val authUiState by authViewModel.uiState.collectAsState()
+    val jadwalUiState by jadwalViewModel.uiState.collectAsState()
     val healthListUiState by healthViewModel.listUiState.collectAsState()
     val healthDetailUiState by healthViewModel.detailUiState.collectAsState()
     val healthFormUiState by healthViewModel.formUiState.collectAsState()
@@ -144,6 +173,12 @@ fun PetCareNavGraph(
         composable(route = PetCareRoutes.HOME) {
             HomePlaceholderScreen(
                 currentUser = authUiState.currentUser,
+                onOpenJadwalFeatureClick = {
+                    navController.navigate(PetCareRoutes.JADWAL_LIST)
+                },
+                onOpenDoctorFeatureClick = {
+                    navController.navigate(PetCareRoutes.DOCTOR_LIST)
+                },
                 onOpenHealthFeatureClick = {
                     navController.navigate(PetCareRoutes.HEALTH_LIST)
                 },
@@ -159,6 +194,134 @@ fun PetCareNavGraph(
             )
         }
 
+        // ===== FITUR 1: JADWAL VAKSIN & KONTROL (SABITHA) =====
+        composable(route = PetCareRoutes.JADWAL_LIST) {
+            JadwalVaksinListScreen(
+                uiState = jadwalUiState,
+                onSearchQueryChange = jadwalViewModel::onSearchQueryChange,
+                onToggleStatus = jadwalViewModel::toggleScheduleStatus,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToAdd = {
+                    jadwalViewModel.initFormForAdd()
+                    navController.navigate(PetCareRoutes.JADWAL_FORM)
+                },
+                onNavigateToDetail = { scheduleId ->
+                    jadwalViewModel.selectSchedule(scheduleId)
+                    navController.navigate(PetCareRoutes.jadwalDetailRoute(scheduleId))
+                },
+                onClearMessage = jadwalViewModel::clearMessage
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.JADWAL_DETAIL,
+            arguments = listOf(
+                navArgument("scheduleId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val scheduleId = backStackEntry.arguments?.getString("scheduleId").orEmpty()
+            val selectedSchedule = jadwalUiState.schedules.find { it.id == scheduleId }
+                ?: jadwalUiState.selectedSchedule
+
+            JadwalVaksinDetailScreen(
+                jadwal = selectedSchedule,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEdit = { schedule ->
+                    jadwalViewModel.initFormForEdit(schedule)
+                    navController.navigate(PetCareRoutes.JADWAL_FORM)
+                },
+                onToggleStatus = jadwalViewModel::toggleScheduleStatus,
+                onDeleteSchedule = { id, onDone ->
+                    jadwalViewModel.deleteSchedule(id, onDone)
+                }
+            )
+        }
+
+        composable(route = PetCareRoutes.JADWAL_FORM) {
+            JadwalVaksinFormScreen(
+                uiState = jadwalUiState,
+                onNamaHewanChange = jadwalViewModel::onFormNamaHewanChange,
+                onJenisChange = jadwalViewModel::onFormJenisChange,
+                onKeperluanChange = jadwalViewModel::onFormKeperluanChange,
+                onTanggalChange = jadwalViewModel::onFormTanggalChange,
+                onJamChange = jadwalViewModel::onFormJamChange,
+                onKlinikChange = jadwalViewModel::onFormKlinikChange,
+                onCatatanChange = jadwalViewModel::onFormCatatanChange,
+                onStatusChange = jadwalViewModel::onFormStatusChange,
+                onSaveClick = {
+                    jadwalViewModel.saveSchedule(authUiState.currentUser?.id) {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ===== FITUR 2: DOKTER HEWAN & KLINIK (ANDIEN) =====
+        composable(route = PetCareRoutes.DOCTOR_LIST) {
+            DoctorClinicListScreen(
+                viewModel = doctorViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToDoctorDetail = { doctorId ->
+                    navController.navigate(PetCareRoutes.doctorDetailRoute(doctorId))
+                },
+                onNavigateToAddDoctor = {
+                    navController.navigate(PetCareRoutes.doctorFormRoute(null))
+                },
+                onNavigateToEditDoctor = { doctorId ->
+                    navController.navigate(PetCareRoutes.doctorFormRoute(doctorId))
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.DOCTOR_DETAIL,
+            arguments = listOf(
+                navArgument("doctorId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val doctorId = backStackEntry.arguments?.getString("doctorId").orEmpty()
+            DoctorDetailScreen(
+                doctorId = doctorId,
+                viewModel = doctorViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEdit = { idToEdit ->
+                    navController.navigate(PetCareRoutes.doctorFormRoute(idToEdit))
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.DOCTOR_FORM,
+            arguments = listOf(
+                navArgument("doctorId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val doctorId = backStackEntry.arguments?.getString("doctorId")
+            DoctorFormScreen(
+                doctorId = doctorId,
+                viewModel = doctorViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ===== FITUR 4: RIWAYAT KESEHATAN (GIVENIA) =====
         composable(route = PetCareRoutes.HEALTH_LIST) {
             RiwayatKesehatanListScreen(
                 uiState = healthListUiState,
@@ -242,6 +405,7 @@ fun PetCareNavGraph(
             )
         }
 
+        // ===== FITUR 5: DATA HEWAN (ALCHALISA) =====
         composable(route = PetCareRoutes.PET_LIST) {
             PetListScreen(
                 uiState = petUiState,
@@ -332,6 +496,8 @@ private data class ModulePreviewItem(
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
+    onOpenJadwalFeatureClick: () -> Unit,
+    onOpenDoctorFeatureClick: () -> Unit,
     onOpenHealthFeatureClick: () -> Unit,
     onOpenPetFeatureClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -343,14 +509,16 @@ private fun HomePlaceholderScreen(
             owner = "Sabitha Marsyarira Nayla",
             description = "Tab Akan Datang & Selesai",
             icon = Icons.Outlined.CalendarMonth,
-            useWarmAccent = false
+            useWarmAccent = false,
+            onClick = onOpenJadwalFeatureClick
         ),
         ModulePreviewItem(
             title = "Dokter Hewan & Klinik",
             owner = "Andien Oktriarahmah S.",
             description = "Konsultasi & Riwayat Kontak",
             icon = Icons.Outlined.LocalHospital,
-            useWarmAccent = true
+            useWarmAccent = true,
+            onClick = onOpenDoctorFeatureClick
         ),
         ModulePreviewItem(
             title = "Jadwal Makan Harian",
