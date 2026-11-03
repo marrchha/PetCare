@@ -42,27 +42,61 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
+import com.example.petcare.ui.health.RiwayatKesehatanDetailScreen
+import com.example.petcare.ui.health.RiwayatKesehatanFormScreen
+import com.example.petcare.ui.health.RiwayatKesehatanListScreen
+import com.example.petcare.ui.health.RiwayatKesehatanViewModel
+import com.example.petcare.ui.pet.PetDetailScreen
+import com.example.petcare.ui.pet.PetFormScreen
+import com.example.petcare.ui.pet.PetListScreen
+import com.example.petcare.ui.pet.PetViewModel
 
 object PetCareRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+
+    // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
+    const val HEALTH_LIST = "health_list"
+    const val HEALTH_DETAIL = "health_detail/{recordId}"
+    const val HEALTH_FORM = "health_form?recordId={recordId}"
+
+    fun healthDetailRoute(recordId: String) = "health_detail/$recordId"
+    fun healthFormRoute(recordId: String? = null) =
+        if (recordId == null) "health_form" else "health_form?recordId=$recordId"
+
+    // Route Fitur 5: Data Hewan (Alchalisa Fathinna - 245150407111066)
+    const val PET_LIST = "pet_list"
+    const val PET_DETAIL = "pet_detail/{petId}"
+    const val PET_FORM = "pet_form?petId={petId}"
+
+    fun petDetailRoute(petId: String) = "pet_detail/$petId"
+    fun petFormRoute(petId: String? = null) =
+        if (petId == null) "pet_form" else "pet_form?petId=$petId"
 }
 
 @Composable
 fun PetCareNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    healthViewModel: RiwayatKesehatanViewModel = viewModel(),
+    petViewModel: PetViewModel = viewModel()
 ) {
-    val uiState by authViewModel.uiState.collectAsState()
+    val authUiState by authViewModel.uiState.collectAsState()
+    val healthListUiState by healthViewModel.listUiState.collectAsState()
+    val healthDetailUiState by healthViewModel.detailUiState.collectAsState()
+    val healthFormUiState by healthViewModel.formUiState.collectAsState()
+    val petUiState by petViewModel.uiState.collectAsState()
 
     NavHost(
         navController = navController,
@@ -71,7 +105,7 @@ fun PetCareNavGraph(
     ) {
         composable(route = PetCareRoutes.LOGIN) {
             LoginScreen(
-                uiState = uiState,
+                uiState = authUiState,
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
                 onLoginClick = authViewModel::login,
@@ -90,7 +124,7 @@ fun PetCareNavGraph(
 
         composable(route = PetCareRoutes.REGISTER) {
             RegisterScreen(
-                uiState = uiState,
+                uiState = authUiState,
                 onFullNameChange = authViewModel::onFullNameChange,
                 onEmailChange = authViewModel::onEmailChange,
                 onPhoneNumberChange = authViewModel::onPhoneNumberChange,
@@ -111,12 +145,179 @@ fun PetCareNavGraph(
 
         composable(route = PetCareRoutes.HOME) {
             HomePlaceholderScreen(
-                currentUser = uiState.currentUser,
+                currentUser = authUiState.currentUser,
+                onOpenHealthFeatureClick = {
+                    navController.navigate(PetCareRoutes.HEALTH_LIST)
+                },
+                onOpenPetFeatureClick = {
+                    navController.navigate(PetCareRoutes.PET_LIST)
+                },
                 onLogoutClick = {
                     authViewModel.logout()
                     navController.navigate(PetCareRoutes.LOGIN) {
                         popUpTo(PetCareRoutes.HOME) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        // ===== FITUR 4: RIWAYAT KESEHATAN (3 HALAMAN MULTI-SCREEN) =====
+        composable(route = PetCareRoutes.HEALTH_LIST) {
+            RiwayatKesehatanListScreen(
+                uiState = healthListUiState,
+                onFilterSelected = healthViewModel::onFilterChange,
+                onSearchQueryChange = healthViewModel::onSearchQueryChange,
+                onNavigateToDetail = { recordId ->
+                    navController.navigate(PetCareRoutes.healthDetailRoute(recordId))
+                },
+                onNavigateToCreate = {
+                    navController.navigate(PetCareRoutes.healthFormRoute(null))
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.HEALTH_DETAIL,
+            arguments = listOf(
+                navArgument("recordId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getString("recordId").orEmpty()
+            RiwayatKesehatanDetailScreen(
+                recordId = recordId,
+                uiState = healthDetailUiState,
+                onLoadDetail = healthViewModel::loadDetail,
+                onNavigateToEdit = { idToEdit ->
+                    navController.navigate(PetCareRoutes.healthFormRoute(idToEdit))
+                },
+                onDeleteConfirm = { idToDelete ->
+                    healthViewModel.deleteRecord(idToDelete) {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.HEALTH_FORM,
+            arguments = listOf(
+                navArgument("recordId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getString("recordId")
+            RiwayatKesehatanFormScreen(
+                recordId = recordId,
+                uiState = healthFormUiState,
+                onPrepareForm = { id ->
+                    if (id.isNullOrBlank()) {
+                        healthViewModel.prepareFormForCreate()
+                    } else {
+                        healthViewModel.prepareFormForEdit(id)
+                    }
+                },
+                onPetNameChange = healthViewModel::onPetNameChange,
+                onPetTypeChange = healthViewModel::onPetTypeChange,
+                onJenisChange = healthViewModel::onJenisChange,
+                onJudulChange = healthViewModel::onJudulChange,
+                onTanggalChange = healthViewModel::onTanggalChange,
+                onDokterChange = healthViewModel::onDokterChange,
+                onCatatanMedisChange = healthViewModel::onCatatanMedisChange,
+                onBiayaChange = healthViewModel::onBiayaChange,
+                onStatusPemulihanChange = healthViewModel::onStatusPemulihanChange,
+                onSaveClick = {
+                    healthViewModel.saveForm {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ===== FITUR 5: DATA HEWAN (3 HALAMAN MULTI-SCREEN) =====
+        composable(route = PetCareRoutes.PET_LIST) {
+            PetListScreen(
+                uiState = petUiState,
+                onSearchQueryChange = petViewModel::onSearchQueryChange,
+                onSpeciesFilterChange = petViewModel::onSpeciesFilterChange,
+                onPetClick = { petId ->
+                    navController.navigate(PetCareRoutes.petDetailRoute(petId))
+                },
+                onAddPetClick = {
+                    petViewModel.prepareForm(null)
+                    navController.navigate(PetCareRoutes.petFormRoute(null))
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.PET_DETAIL,
+            arguments = listOf(
+                navArgument("petId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val petId = backStackEntry.arguments?.getString("petId").orEmpty()
+            val selectedPet = petViewModel.getPetById(petId)
+
+            PetDetailScreen(
+                pet = selectedPet,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onEditClick = { idToEdit ->
+                    petViewModel.prepareForm(idToEdit)
+                    navController.navigate(PetCareRoutes.petFormRoute(idToEdit))
+                },
+                onDeleteConfirm = { idToDelete ->
+                    petViewModel.deletePet(idToDelete)
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.PET_FORM,
+            arguments = listOf(
+                navArgument("petId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
+            PetFormScreen(
+                uiState = petUiState,
+                onNameChange = petViewModel::onFormNameChange,
+                onSpeciesChange = petViewModel::onFormSpeciesChange,
+                onBreedChange = petViewModel::onFormBreedChange,
+                onGenderChange = petViewModel::onFormGenderChange,
+                onAgeMonthsChange = petViewModel::onFormAgeMonthsChange,
+                onWeightKgChange = petViewModel::onFormWeightKgChange,
+                onColorChange = petViewModel::onFormColorChange,
+                onPhotoUriChange = petViewModel::onFormPhotoUriChange,
+                onNotesChange = petViewModel::onFormNotesChange,
+                onSaveClick = {
+                    val savedId = petViewModel.savePet()
+                    if (savedId != null) {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -128,19 +329,21 @@ private data class ModulePreviewItem(
     val owner: String,
     val description: String,
     val icon: ImageVector,
-    val useWarmAccent: Boolean = false
+    val useWarmAccent: Boolean = false,
+    val onClick: (() -> Unit)? = null
 )
 
 /**
- * Halaman Home Placeholder setelah berhasil Login — Dirancang persis dengan
- * nuansa layar tengah referensi ("For Buddy"):
- * - Header Sky Blue melengkung dengan pill search bar putih di dalamnya.
- * - Pill kategori hitam Ink & putih.
- * - Kartu pastel Lavender & Peach TANPA SHADOW (0.dp) dengan lingkaran putih `+`.
+ * Halaman Beranda setelah berhasil Login:
+ * - Tanpa bagian "Kategori Hewan", langsung menampilkan "Fitur Utama Kelompok".
+ * - Kartu ke-4 ("Riwayat Kesehatan") dan Kartu ke-5 ("Data Profil Hewan") keduanya
+ *   bisa langsung diklik menuju halaman fiturnya masing-masing.
  */
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
+    onOpenHealthFeatureClick: () -> Unit,
+    onOpenPetFeatureClick: () -> Unit,
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -171,14 +374,16 @@ private fun HomePlaceholderScreen(
             owner = "Givenia Marudur Hasiana",
             description = "Filter Sakit, Obat & Operasi",
             icon = Icons.Outlined.MedicalServices,
-            useWarmAccent = true
+            useWarmAccent = true,
+            onClick = onOpenHealthFeatureClick
         ),
         ModulePreviewItem(
             title = "Data Profil Hewan",
             owner = "Alchalisa Fathinna",
             description = "Grid foto hewan & pencarian",
             icon = Icons.Outlined.Pets,
-            useWarmAccent = false
+            useWarmAccent = false,
+            onClick = onOpenPetFeatureClick
         )
     )
 
@@ -282,7 +487,6 @@ private fun HomePlaceholderScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Pill Search Bar Putih Bersih di dalam Header Sky Blue
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -303,79 +507,6 @@ private fun HomePlaceholderScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // ===== KATEGORI PILL HITAM INK & PUTIH (FLAT) =====
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Kategori Hewan",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "5 Modul >",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Pill aktif hitam Ink
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Pets,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Kucing",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-
-                // Pill non-aktif flat
-                listOf("Anjing", "Kelinci").forEach { label ->
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
                 }
             }
 
@@ -410,6 +541,13 @@ private fun HomePlaceholderScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(22.dp))
                             .background(cardBg)
+                            .then(
+                                if (item.onClick != null) {
+                                    Modifier.clickable(onClick = item.onClick)
+                                } else {
+                                    Modifier
+                                }
+                            )
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
