@@ -7,19 +7,19 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val LightColors = lightColorScheme(
-    primary = Teal40,
-    onPrimary = TealOn,
-    primaryContainer = TealContainer,
-    onPrimaryContainer = OnTealContainer,
-    secondary = Honey40,
-    onSecondary = HoneyOn,
-    secondaryContainer = HoneyContainer,
-    onSecondaryContainer = OnHoneyContainer,
-    tertiary = Rose40,
-    onTertiary = RoseOn,
-    tertiaryContainer = RoseContainer,
-    onTertiaryContainer = OnRoseContainer,
-    background = Mint99,
+    primary = Ink,
+    onPrimary = OnInk,
+    primaryContainer = Sky,
+    onPrimaryContainer = OnSky,
+    secondary = Violet40,
+    onSecondary = OnViolet,
+    secondaryContainer = VioletContainer,
+    onSecondaryContainer = OnVioletContainer,
+    tertiary = Peach40,
+    onTertiary = OnPeach,
+    tertiaryContainer = PeachContainer,
+    onTertiaryContainer = OnPeachContainer,
+    background = BackgroundLight,
     onBackground = OnSurfaceLight,
     surface = SurfaceLight,
     onSurface = OnSurfaceLight,
@@ -39,18 +39,18 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = TealDark80,
-    onPrimary = OnTealDark,
-    primaryContainer = TealContainerDark,
-    onPrimaryContainer = OnTealContainerDark,
-    secondary = HoneyDark80,
-    onSecondary = OnHoneyDark,
-    secondaryContainer = HoneyContainerDark,
-    onSecondaryContainer = OnHoneyContainerDark,
-    tertiary = RoseDark80,
-    onTertiary = OnRoseDark,
-    tertiaryContainer = RoseContainerDark,
-    onTertiaryContainer = OnRoseContainerDark,
+    primary = InkDark,
+    onPrimary = OnInkDark,
+    primaryContainer = SkyDark,
+    onPrimaryContainer = OnSkyDark,
+    secondary = VioletDark80,
+    onSecondary = OnVioletDark,
+    secondaryContainer = VioletContainerDark,
+    onSecondaryContainer = OnVioletContainerDark,
+    tertiary = PeachDark80,
+    onTertiary = OnPeachDark,
+    tertiaryContainer = PeachContainerDark,
+    onTertiaryContainer = OnPeachContainerDark,
     background = BackgroundDark,
     onBackground = OnSurfaceDark,
     surface = SurfaceDark,
@@ -70,10 +70,6 @@ private val DarkColors = darkColorScheme(
     onErrorContainer = OnErrorContainerDark
 )
 
-/**
- * Bungkus seluruh aplikasi dengan PetCareTheme { ... } di MainActivity.
- * Dynamic color sengaja tidak dipakai agar warna sama di semua HP anggota.
- */
 @Composable
 fun PetCareTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
