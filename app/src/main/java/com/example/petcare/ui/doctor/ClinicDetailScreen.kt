@@ -1,6 +1,5 @@
 package com.example.petcare.ui.doctor
 
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,13 +89,6 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
-/**
- * Stateful Container untuk Layar Detail Klinik.
- * Menampilkan:
- * - Informasi dasar klinik & tombol edit informasi klinik
- * - Tab Dokter (khusus klinik ini)
- * - Tab Layanan (khusus klinik ini + search & filter bottom sheet)
- */
 @Composable
 fun ClinicDetailScreen(
     clinicId: String,
@@ -165,9 +157,6 @@ fun ClinicDetailScreen(
     )
 }
 
-/**
- * Stateless UI Content Halaman Detail Klinik.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClinicDetailContent(
@@ -201,7 +190,6 @@ fun ClinicDetailContent(
     val tabs = listOf("Dokter Cabang (${doctors.size})", "Layanan (${services.size})")
     val pagerState = rememberPagerState(initialPage = selectedTab) { tabs.size }
 
-    // State dialog tambah / edit layanan
     var showServiceDialog by remember { mutableStateOf(false) }
     var serviceToEdit by remember { mutableStateOf<ClinicService?>(null) }
     var serviceToDelete by remember { mutableStateOf<ClinicService?>(null) }
@@ -284,9 +272,6 @@ fun ClinicDetailContent(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // ==========================================
-                // INFORMASI DASAR KLINIK
-                // ==========================================
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -339,7 +324,6 @@ fun ClinicDetailContent(
                                 }
                             }
 
-                            // Tombol Edit
                             IconButton(
                                 onClick = onNavigateToEditClinic,
                                 modifier = Modifier
@@ -358,7 +342,6 @@ fun ClinicDetailContent(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Alamat
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Outlined.LocationOn,
@@ -376,7 +359,6 @@ fun ClinicDetailContent(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Jam & Kontak
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -433,9 +415,6 @@ fun ClinicDetailContent(
                     }
                 }
 
-                // ==========================================
-                // DUA TAB: DOKTER KLINIK INI & LAYANAN KLINIK INI
-                // ==========================================
                 PrimaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -464,9 +443,6 @@ fun ClinicDetailContent(
                     }
                 }
 
-                // ==========================================
-                // HORIZONTAL PAGER: DOKTER & LAYANAN
-                // ==========================================
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier
@@ -475,14 +451,12 @@ fun ClinicDetailContent(
                 ) { pageIndex ->
                     when (pageIndex) {
                         0 -> {
-                            // TAB DOKTER KLINIK INI
                             ClinicDoctorsTab(
                                 doctors = doctors,
                                 onDoctorClick = onNavigateToDoctorDetail
                             )
                         }
                         1 -> {
-                            // TAB LAYANAN KLINIK INI
                             ClinicServicesTab(
                                 services = services,
                                 searchQuery = serviceSearchQuery,
@@ -504,7 +478,6 @@ fun ClinicDetailContent(
         }
     }
 
-    // Modal Bottom Sheet Filter Layanan
     if (isServiceFilterSheetOpen) {
         ServiceFilterBottomSheet(
             selectedCategory = tempServiceCategory,
@@ -517,7 +490,6 @@ fun ClinicDetailContent(
         )
     }
 
-    // Dialog Tambah / Edit Layanan
     if (showServiceDialog) {
         ServiceFormDialog(
             service = serviceToEdit,
@@ -529,7 +501,6 @@ fun ClinicDetailContent(
         )
     }
 
-    // Dialog Konfirmasi Hapus Layanan
     if (serviceToDelete != null) {
         AlertDialog(
             onDismissRequest = { serviceToDelete = null },
@@ -567,9 +538,6 @@ fun ClinicDetailContent(
     }
 }
 
-/**
- * Tab Daftar Dokter milik cabang klinik ini.
- */
 @Composable
 private fun ClinicDoctorsTab(
     doctors: List<Doctor>,
@@ -611,7 +579,6 @@ private fun ClinicDoctorsTab(
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Ikon profil dokter (NO PHOTO)
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
@@ -702,9 +669,6 @@ private fun ClinicDoctorsTab(
     }
 }
 
-/**
- * Tab Daftar Layanan milik cabang klinik ini (lengkap dengan search & filter).
- */
 @Composable
 private fun ClinicServicesTab(
     services: List<ClinicService>,
@@ -721,7 +685,6 @@ private fun ClinicServicesTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search & Filter Bar Layanan
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -756,7 +719,6 @@ private fun ClinicServicesTab(
                 modifier = Modifier.weight(1f)
             )
 
-            // Tombol Filter Layanan dengan Badge
             BadgedBox(
                 badge = {
                     if (activeFilterCount > 0) {
@@ -789,7 +751,6 @@ private fun ClinicServicesTab(
             }
         }
 
-        // LazyColumn Layanan
         if (services.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -869,7 +830,6 @@ private fun ClinicServicesTab(
                                                 )
                                             }
 
-                                            // Status Layanan
                                             Box(
                                                 modifier = Modifier
                                                     .clip(CircleShape)
@@ -969,9 +929,6 @@ private fun ClinicServicesTab(
     }
 }
 
-/**
- * Bottom Sheet Filter Layanan di Detail Klinik: Kategori & Status (AND logic).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServiceFilterBottomSheet(
@@ -1017,7 +974,6 @@ private fun ServiceFilterBottomSheet(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // Kategori
             Text(
                 text = "Kategori Layanan",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -1064,7 +1020,6 @@ private fun ServiceFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Status
             Text(
                 text = "Status Layanan",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),

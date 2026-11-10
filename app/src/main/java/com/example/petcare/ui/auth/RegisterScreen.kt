@@ -66,14 +66,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.petcare.ui.theme.PetCareTheme
 
-/**
- * Halaman Register PetCare — Clean, Flat, Aesthetic (Zero Shadow)
- * Mengikuti gaya visual referensi:
- * - Top navigation bar dengan tombol kembali bulat (`CircleShape`) flat.
- * - Kartu aksen Lavender (`secondaryContainer`) dengan lingkaran putih di kanan atas.
- * - Field input flat (`surfaceContainer`) tanpa shadow.
- * - Tombol kapsul utama `Sky Blue` atau `Ink` flat tanpa elevasi.
- */
 @Composable
 fun RegisterScreen(
     uiState: AuthUiState,
@@ -119,7 +111,6 @@ fun RegisterScreen(
                 .imePadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            // ===== TOP BAR BERSIH ALA LAYAR DETAILS DI REFERENSI =====
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -167,7 +158,7 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ===== KARTU PASTEL LAVENDER FLAT (ALA KARTU TENGAH PAWCARE) =====
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,7 +189,7 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Lingkaran putih bersih di kanan (seperti tombol `+` bulat putih di kartu ungu)
+
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -218,7 +209,7 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ===== PESAN ERROR FLAT =====
+
             AnimatedVisibility(visible = uiState.errorMessage != null) {
                 uiState.errorMessage?.let { errorMsg ->
                     Row(
@@ -246,7 +237,6 @@ fun RegisterScreen(
                 }
             }
 
-            // 1. Nama Lengkap
             Text(
                 text = "Nama Lengkap",
                 style = MaterialTheme.typography.labelLarge,
@@ -282,7 +272,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. Email
             Text(
                 text = "Alamat Email",
                 style = MaterialTheme.typography.labelLarge,
@@ -318,7 +307,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 3. Nomor Telepon / WhatsApp
             Text(
                 text = "Nomor Telepon / WhatsApp",
                 style = MaterialTheme.typography.labelLarge,
@@ -354,7 +342,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 4. Kata Sandi
             Text(
                 text = "Kata Sandi",
                 style = MaterialTheme.typography.labelLarge,
@@ -408,7 +395,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 5. Konfirmasi Kata Sandi
             Text(
                 text = "Konfirmasi Kata Sandi",
                 style = MaterialTheme.typography.labelLarge,
@@ -468,7 +454,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ===== TOMBOL PILL UTAMA (FLAT, ZERO SHADOW) =====
             Button(
                 onClick = {
                     focusManager.clearFocus()
@@ -548,7 +533,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ===== FOOTER KEMBALI KE LOGIN (FLAT PILL BAR) =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

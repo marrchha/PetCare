@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +52,8 @@ import com.example.petcare.data.model.UserProfile
 import com.example.petcare.ui.auth.AuthViewModel
 import com.example.petcare.ui.auth.LoginScreen
 import com.example.petcare.ui.auth.RegisterScreen
+import com.example.petcare.ui.doctor.ClinicDetailScreen
+import com.example.petcare.ui.doctor.ClinicFormScreen
 import com.example.petcare.ui.doctor.DoctorClinicListScreen
 import com.example.petcare.ui.doctor.DoctorClinicViewModel
 import com.example.petcare.ui.doctor.DoctorDetailScreen
@@ -79,23 +82,29 @@ object PetCareRoutes {
     const val HOME = "home"
     const val PROFILE = "profile"
 
-    // Route Fitur 1: Jadwal Vaksin & Kontrol (Sabitha Marsyarira Nayla - 245150401111032)
     const val JADWAL_LIST = "jadwal_list"
     const val JADWAL_DETAIL = "jadwal_detail/{scheduleId}"
     const val JADWAL_FORM = "jadwal_form"
 
     fun jadwalDetailRoute(scheduleId: String) = "jadwal_detail/$scheduleId"
 
-    // Route Fitur 2: Dokter Hewan & Klinik (Andien Oktriarahmah Syarifah - 245150400111046)
     const val DOCTOR_LIST = "doctor_list"
     const val DOCTOR_DETAIL = "doctor_detail/{doctorId}"
-    const val DOCTOR_FORM = "doctor_form?doctorId={doctorId}"
+    const val DOCTOR_FORM = "doctor_form?doctorId={doctorId}&clinicId={clinicId}"
+    const val CLINIC_DETAIL = "clinic_detail/{clinicId}"
+    const val CLINIC_FORM = "clinic_form?clinicId={clinicId}"
 
     fun doctorDetailRoute(doctorId: String) = "doctor_detail/$doctorId"
-    fun doctorFormRoute(doctorId: String? = null) =
-        if (doctorId == null) "doctor_form" else "doctor_form?doctorId=$doctorId"
+    fun doctorFormRoute(doctorId: String? = null, clinicId: String? = null): String {
+        val params = mutableListOf<String>()
+        if (!doctorId.isNullOrBlank()) params.add("doctorId=$doctorId")
+        if (!clinicId.isNullOrBlank()) params.add("clinicId=$clinicId")
+        return if (params.isEmpty()) "doctor_form" else "doctor_form?${params.joinToString("&")}"
+    }
+    fun clinicDetailRoute(clinicId: String) = "clinic_detail/$clinicId"
+    fun clinicFormRoute(clinicId: String? = null) =
+        if (clinicId.isNullOrBlank()) "clinic_form" else "clinic_form?clinicId=$clinicId"
 
-    // Route Fitur 3: Jadwal Makan Harian (Jeanete Arthika Lorentz R. - 245150400111038)
     const val FEEDING_LIST = "feeding_list"
     const val FEEDING_DETAIL = "feeding_detail/{feedingId}"
     const val FEEDING_FORM = "feeding_form?feedingId={feedingId}"
@@ -104,7 +113,6 @@ object PetCareRoutes {
     fun feedingFormRoute(feedingId: String? = null) =
         if (feedingId == null) "feeding_form" else "feeding_form?feedingId=$feedingId"
 
-    // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
     const val HEALTH_LIST = "health_list"
     const val HEALTH_DETAIL = "health_detail/{recordId}"
     const val HEALTH_FORM = "health_form?recordId={recordId}"
@@ -113,7 +121,6 @@ object PetCareRoutes {
     fun healthFormRoute(recordId: String? = null) =
         if (recordId == null) "health_form" else "health_form?recordId=$recordId"
 
-    // Route Fitur 5: Data Hewan (Alchalisa Fathinna - 245150407111066)
     const val PET_LIST = "pet_list"
     const val PET_DETAIL = "pet_detail/{petId}"
     const val PET_FORM = "pet_form?petId={petId}"
@@ -205,6 +212,7 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.HEALTH_LIST)
                 },
                 onOpenPetFeatureClick = {
+                    petViewModel.refreshPets()
                     navController.navigate(PetCareRoutes.PET_LIST)
                 },
                 onLogoutClick = {
@@ -230,7 +238,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 1: JADWAL VAKSIN & KONTROL (SABITHA) =====
         composable(route = PetCareRoutes.JADWAL_LIST) {
             JadwalVaksinListScreen(
                 uiState = jadwalUiState,
@@ -299,7 +306,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 2: DOKTER HEWAN & KLINIK (ANDIEN) =====
         composable(route = PetCareRoutes.DOCTOR_LIST) {
             DoctorClinicListScreen(
                 viewModel = doctorViewModel,
@@ -310,10 +316,61 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.doctorDetailRoute(doctorId))
                 },
                 onNavigateToAddDoctor = {
-                    navController.navigate(PetCareRoutes.doctorFormRoute(null))
+                    navController.navigate(PetCareRoutes.doctorFormRoute(null, null))
                 },
                 onNavigateToEditDoctor = { doctorId ->
-                    navController.navigate(PetCareRoutes.doctorFormRoute(doctorId))
+                    navController.navigate(PetCareRoutes.doctorFormRoute(doctorId, null))
+                },
+                onNavigateToClinicDetail = { clinicId ->
+                    navController.navigate(PetCareRoutes.clinicDetailRoute(clinicId))
+                },
+                onNavigateToAddClinic = {
+                    navController.navigate(PetCareRoutes.clinicFormRoute(null))
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.CLINIC_DETAIL,
+            arguments = listOf(
+                navArgument("clinicId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val clinicId = backStackEntry.arguments?.getString("clinicId").orEmpty()
+            ClinicDetailScreen(
+                clinicId = clinicId,
+                viewModel = doctorViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEditClinic = { idToEdit ->
+                    navController.navigate(PetCareRoutes.clinicFormRoute(idToEdit))
+                },
+                onNavigateToDoctorDetail = { doctorId ->
+                    navController.navigate(PetCareRoutes.doctorDetailRoute(doctorId))
+                },
+                onNavigateToAddDoctorForClinic = { targetClinicId ->
+                    navController.navigate(PetCareRoutes.doctorFormRoute(null, targetClinicId))
+                }
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.CLINIC_FORM,
+            arguments = listOf(
+                navArgument("clinicId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val clinicId = backStackEntry.arguments?.getString("clinicId")
+            ClinicFormScreen(
+                clinicId = clinicId,
+                viewModel = doctorViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -332,7 +389,7 @@ fun PetCareNavGraph(
                     navController.popBackStack()
                 },
                 onNavigateToEdit = { idToEdit ->
-                    navController.navigate(PetCareRoutes.doctorFormRoute(idToEdit))
+                    navController.navigate(PetCareRoutes.doctorFormRoute(idToEdit, null))
                 }
             )
         }
@@ -344,12 +401,19 @@ fun PetCareNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("clinicId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val doctorId = backStackEntry.arguments?.getString("doctorId")
+            val clinicId = backStackEntry.arguments?.getString("clinicId")
             DoctorFormScreen(
                 doctorId = doctorId,
+                preselectedClinicId = clinicId,
                 viewModel = doctorViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
@@ -357,7 +421,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 3: JADWAL MAKAN HARIAN (JEANETE) =====
         composable(route = PetCareRoutes.FEEDING_LIST) {
             FeedingListScreen(
                 onNavigateBack = {
@@ -412,7 +475,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 4: RIWAYAT KESEHATAN (GIVENIA) =====
         composable(route = PetCareRoutes.HEALTH_LIST) {
             RiwayatKesehatanListScreen(
                 uiState = healthListUiState,
@@ -496,7 +558,6 @@ fun PetCareNavGraph(
             )
         }
 
-        // ===== FITUR 5: DATA HEWAN (ALCHALISA) =====
         composable(route = PetCareRoutes.PET_LIST) {
             PetListScreen(
                 uiState = petUiState,
@@ -534,8 +595,9 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.petFormRoute(idToEdit))
                 },
                 onDeleteConfirm = { idToDelete ->
-                    petViewModel.deletePet(idToDelete)
-                    navController.popBackStack()
+                    petViewModel.deletePet(idToDelete) {
+                        navController.popBackStack()
+                    }
                 }
             )
         }
@@ -550,6 +612,7 @@ fun PetCareNavGraph(
                 }
             )
         ) {
+            val context = LocalContext.current
             PetFormScreen(
                 uiState = petUiState,
                 onNameChange = petViewModel::onFormNameChange,
@@ -562,8 +625,7 @@ fun PetCareNavGraph(
                 onPhotoUriChange = petViewModel::onFormPhotoUriChange,
                 onNotesChange = petViewModel::onFormNotesChange,
                 onSaveClick = {
-                    val savedId = petViewModel.savePet()
-                    if (savedId != null) {
+                    petViewModel.savePet(context) {
                         navController.popBackStack()
                     }
                 },
@@ -608,7 +670,7 @@ private fun HomePlaceholderScreen(
         ModulePreviewItem(
             title = "Dokter Hewan & Klinik",
             owner = "Andien Oktriarahmah S.",
-            description = "Konsultasi & Riwayat Kontak",
+            description = "Manajemen Multi-Klinik & Jadwal Dokter",
             icon = Icons.Outlined.LocalHospital,
             useWarmAccent = true,
             onClick = onOpenDoctorFeatureClick
@@ -806,24 +868,26 @@ private fun HomePlaceholderScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(MaterialTheme.colorScheme.surface),
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = item.icon,
-                                    contentDescription = null,
+                                    contentDescription = item.title,
                                     tint = cardContent,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
+
                             Spacer(modifier = Modifier.width(14.dp))
+
                             Column {
                                 Text(
                                     text = item.title,
@@ -833,15 +897,15 @@ private fun HomePlaceholderScreen(
                                     color = cardContent
                                 )
                                 Text(
-                                    text = item.owner,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = cardContent.copy(alpha = 0.75f)
+                                    text = item.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = cardContent.copy(alpha = 0.8f)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = item.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = cardContent.copy(alpha = 0.9f)
+                                    text = "PIC: ${item.owner}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = cardContent.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -855,14 +919,16 @@ private fun HomePlaceholderScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                contentDescription = "Buka Fitur",
+                                tint = cardContent,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }

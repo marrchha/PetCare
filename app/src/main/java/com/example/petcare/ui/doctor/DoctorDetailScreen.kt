@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalHospital
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -67,7 +68,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.petcare.data.model.Doctor
 import com.example.petcare.ui.theme.PetCareTheme
-
 
 @Composable
 fun DoctorDetailScreen(
@@ -109,13 +109,6 @@ fun DoctorDetailScreen(
     )
 }
 
-/**
- * Stateless UI Content — Bersih tanpa tombol edit/kontak redundan:
- * - Menampilkan foto dokter asli / illustrated avatar
- * - Menampilkan kontak tunggal terintegrasi (sekali saja) dengan aksi panggil langsung
- * - Tombol edit hanya 1 di bagian bawah
- * - Aksi hapus di TopAppBar
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorDetailContent(
@@ -190,7 +183,7 @@ fun DoctorDetailContent(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // dokter heaser Profil Card dengan FOTO DOKTER
+                // Header Profil Card dengan Ikon Dokter (Tanpa Foto)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
@@ -201,15 +194,23 @@ fun DoctorDetailContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(22.dp),
+                            .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // foto ddokter tampil
-                        DoctorPhotoThumbnail(
-                            photoUri = doctor.photoUri,
-                            avatarIndex = doctor.avatarIndex,
-                            size = 96.dp
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = "Ikon Profil Dokter",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
@@ -229,7 +230,6 @@ fun DoctorDetailContent(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Lokasi Klinik
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Outlined.LocalHospital,
@@ -241,13 +241,12 @@ fun DoctorDetailContent(
                             Text(
                                 text = doctor.clinicName,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // status Badge
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -257,7 +256,7 @@ fun DoctorDetailContent(
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = if (doctor.isActive) "● Praktik Aktif" else "○ Sedang Libur / Cuti",
+                                text = if (doctor.isActive) "● Praktik Aktif" else "○ Sedang Libur / Nonaktif",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White
                             )
@@ -303,7 +302,6 @@ fun DoctorDetailContent(
                     }
                 }
 
-                //informasi praktik
                 Text(
                     text = "Informasi Praktik & Kontak",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -339,7 +337,6 @@ fun DoctorDetailContent(
                         value = "${doctor.experienceYears} Tahun"
                     )
 
-                    // kontak dokter
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -378,7 +375,6 @@ fun DoctorDetailContent(
                             }
                         }
 
-                        // call langsung
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -419,7 +415,6 @@ fun DoctorDetailContent(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // ubah daya
                 Button(
                     onClick = { onNavigateToEdit(doctor.id) },
                     modifier = Modifier
@@ -438,7 +433,7 @@ fun DoctorDetailContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Ubah Data Dokter",
+                        text = "Edit Profil Dokter",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -448,7 +443,6 @@ fun DoctorDetailContent(
         }
     }
 
-    // konfirm apus dokter
     if (showDeleteConfirmDialog && doctor != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
@@ -541,16 +535,16 @@ private fun DoctorDetailPreview() {
         DoctorDetailContent(
             doctor = Doctor(
                 id = "demo-001",
-                name = "drh. Sarah Wijayanti, M.Si",
-                specialization = "Bedah & Penyakit Dalam Kucing",
-                practiceDays = "Senin - Kamis",
-                practiceHours = "09:00 - 15:00",
-                phoneContact = "0812-3456-7891",
-                clinicName = "PetCare Central Vet & Hospital",
+                name = "drh. Andi Prasetya",
+                specialization = "Dokter Umum",
+                practiceDays = "Senin, Selasa, Rabu, Kamis",
+                practiceHours = "08:00 - 14:00",
+                phoneContact = "0812-3456-0001",
+                clinicName = "Petcare Malang",
                 avatarIndex = 1,
                 isActive = true,
-                experienceYears = 7,
-                notes = "Fokus pada sterilisasi dan penanganan infeksi saluran cerna."
+                experienceYears = 4,
+                notes = "Fokus pada pemeriksaan umum dan vaksinasi."
             )
         )
     }

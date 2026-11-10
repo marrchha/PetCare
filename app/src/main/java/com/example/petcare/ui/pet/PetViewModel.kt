@@ -1,15 +1,20 @@
 package com.example.petcare.ui.pet
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.petcare.data.model.Pet
 import com.example.petcare.data.repository.PetRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class PetUiState(
     val allPets: List<Pet> = emptyList(),
+    val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
     val searchQuery: String = "",
     val selectedSpeciesFilter: String = "Semua",
     val editingPetId: String? = null,
@@ -44,6 +49,22 @@ class PetViewModel(
         PetUiState(allPets = repository.getAllPets())
     )
     val uiState: StateFlow<PetUiState> = _uiState.asStateFlow()
+
+    init {
+        refreshPets()
+    }
+
+    fun refreshPets() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val result = repository.fetchAllPets()
+            result.onSuccess { pets ->
+                _uiState.update { it.copy(allPets = pets, isLoading = false) }
+            }.onFailure {
+                _uiState.update { it.copy(allPets = repository.getAllPets(), isLoading = false) }
+            }
+        }
+    }
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
@@ -130,8 +151,10 @@ class PetViewModel(
         _uiState.update { it.copy(formNotes = value, formError = null) }
     }
 
-    fun savePet(): String? {
+    fun savePet(context: Context, onSuccess: (String) -> Unit) {
         val s = _uiState.value
+        if (s.isSaving) return
+
         val name = s.formName.trim()
         val breed = s.formBreed.trim()
         val age = s.formAgeMonths.trim().toIntOrNull()
@@ -141,64 +164,89 @@ class PetViewModel(
         when {
             name.isBlank() -> {
                 _uiState.update { it.copy(formError = "Nama hewan wajib diisi.") }
-                return null
+                return
             }
             breed.isBlank() -> {
                 _uiState.update { it.copy(formError = "Ras / jenis keturunan hewan wajib diisi.") }
-                return null
+                return
             }
             age == null || age < 0 -> {
                 _uiState.update { it.copy(formError = "Masukkan umur hewan yang valid (dalam bulan).") }
-                return null
+                return
             }
             weight == null || weight <= 0.0 -> {
                 _uiState.update { it.copy(formError = "Masukkan berat badan hewan yang valid (kg).") }
-                return null
+                return
             }
             color.isBlank() -> {
                 _uiState.update { it.copy(formError = "Warna bulu / ciri fisik wajib diisi.") }
-                return null
+                return
             }
         }
 
         val editingId = s.editingPetId
-        return if (editingId == null) {
-            val created = repository.insertPet(
-                name = name,
-                species = s.formSpecies,
-                breed = breed,
-                gender = s.formGender,
-                ageMonths = age,
-                weightKg = weight,
-                color = color,
-                photoUri = s.formPhotoUri,
-                notes = s.formNotes
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, formError = null) }
+
+            val result = if (editingId == null) {
+                repository.insertPetRemote(
+                    context = context,
+                    name = name,
+                    species = s.formSpecies,
+                    breed = breed,
+                    gender = s.formGender,
+                    ageMonths = age,
+                    weightKg = weight,
+                    color = color,
+                    photoUri = s.formPhotoUri,
+                    notes = s.formNotes
+                )
+            } else {
+                val existing = getPetById(editingId)
+                val updated = Pet(
+                    id = editingId,
+                    name = name,
+                    species = s.formSpecies,
+                    breed = breed,
+                    gender = s.formGender,
+                    ageMonths = age,
+                    weightKg = weight,
+                    color = color,
+                    photoUri = s.formPhotoUri,
+                    notes = s.formNotes.trim(),
+                    accentIndex = existing?.accentIndex ?: 0
+                )
+                repository.updatePetRemote(context, updated)
+            }
+
+            result.fold(
+                onSuccess = { savedPet ->
+                    _uiState.update {
+                        it.copy(
+                            allPets = repository.getAllPets(),
+                            isSaving = false,
+                            formError = null
+                        )
+                    }
+                    onSuccess(savedPet.id)
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            formError = err.message ?: "Gagal menyimpan data hewan ke Supabase."
+                        )
+                    }
+                }
             )
-            _uiState.update { it.copy(allPets = repository.getAllPets(), formError = null) }
-            created.id
-        } else {
-            val existing = getPetById(editingId)
-            val updated = Pet(
-                id = editingId,
-                name = name,
-                species = s.formSpecies,
-                breed = breed,
-                gender = s.formGender,
-                ageMonths = age,
-                weightKg = weight,
-                color = color,
-                photoUri = s.formPhotoUri,
-                notes = s.formNotes.trim(),
-                accentIndex = existing?.accentIndex ?: 0
-            )
-            repository.updatePet(updated)
-            _uiState.update { it.copy(allPets = repository.getAllPets(), formError = null) }
-            editingId
         }
     }
 
-    fun deletePet(petId: String) {
-        repository.deletePet(petId)
-        _uiState.update { it.copy(allPets = repository.getAllPets()) }
+    fun deletePet(petId: String, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.deletePetRemote(petId)
+            _uiState.update { it.copy(allPets = repository.getAllPets()) }
+            onSuccess()
+        }
     }
 }

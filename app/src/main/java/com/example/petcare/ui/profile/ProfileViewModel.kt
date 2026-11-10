@@ -1,6 +1,5 @@
 package com.example.petcare.ui.profile
 
-
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,24 +36,19 @@ data class ProfileUiState(
 /**
  * ViewModel halaman Profil (MVVM + UDF):
  * - View membaca `uiState`, lalu mengirim event dengan memanggil fungsi di ViewModel.
- * - Perubahan data dilakukan lewat Repository (Single Source of Truth).
- * - ViewModel tidak menyimpan Context; AvatarStorage dikirim dari View sebagai parameter.
+ * - Perubahan data dilakukan lewat Repository (Single Source of Truth) dan tersinkron ke Supabase.
  */
 class ProfileViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
-    // (1) Teks TextField -> mutableStateOf (pemiliknya: ketikan user), diubah hanya dari ViewModel
     var editName by mutableStateOf("")
         private set
     var editPhone by mutableStateOf("")
         private set
 
-    // (2) Status layar yang diatur ViewModel sendiri (edit, loading, error, pesan)
     private val _status = MutableStateFlow(ProfileUiState())
 
-    // (3) UI state final = data pengguna dari Repository + status layar.
-    // combine dijalankan ulang setiap kali SALAH SATU sumber berubah.
     val uiState: StateFlow<ProfileUiState> = combine(
         repository.currentUserFlow, _status
     ) { user, status ->
@@ -87,7 +81,6 @@ class ProfileViewModel(
     }
 
     fun saveProfile() {
-        // Validasi dilakukan di ViewModel (logika bisnis), bukan di Composable
         if (editName.trim().length < 3) {
             _status.update { it.copy(errorMessage = "Nama lengkap minimal 3 karakter.") }
             return
@@ -101,26 +94,28 @@ class ProfileViewModel(
             _status.update { it.copy(isSaving = true, errorMessage = null) }
             try {
                 repository.updateProfile(editName, editPhone).getOrThrow()
-                _status.update { it.copy(isEditing = false, infoMessage = "Profil berhasil diperbarui.") }
+                _status.update { it.copy(isEditing = false, infoMessage = "Profil berhasil diperbarui di Supabase.") }
             } catch (e: CancellationException) {
-                throw e // pembatalan coroutine jangan ditangkap
+                throw e
             } catch (e: Exception) {
                 _status.update { it.copy(errorMessage = e.message ?: "Gagal menyimpan profil.") }
             } finally {
-                _status.update { it.copy(isSaving = false) } // selalu dijalankan
+                _status.update { it.copy(isSaving = false) }
             }
         }
     }
 
-    /** Upload foto profil. Proses file dijalankan di Dispatchers.IO (main-safe). */
+    /** Upload foto profil ke Supabase Storage dan simpan URL-nya ke tabel users. */
     fun onPhotoPicked(uri: Uri, avatarStorage: AvatarStorage) {
         val user = repository.getCurrentUser() ?: return
         viewModelScope.launch {
             _status.update { it.copy(isUploadingPhoto = true, errorMessage = null) }
             try {
-                val file = withContext(Dispatchers.IO) { avatarStorage.save(user.id, uri) }
-                repository.setAvatar(file.absolutePath)
-                _status.update { it.copy(infoMessage = "Foto profil berhasil diperbarui.") }
+                val uploadedUrlOrPath = withContext(Dispatchers.IO) {
+                    avatarStorage.saveAndUpload(user.id, uri)
+                }
+                repository.setAvatar(uploadedUrlOrPath)
+                _status.update { it.copy(infoMessage = "Foto profil berhasil diunggah ke Supabase.") }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -140,7 +135,6 @@ class ProfileViewModel(
         }
     }
 
-    /** Membaca kembali foto yang pernah diunggah (dipanggil dari LaunchedEffect saat user login). */
     fun restoreAvatar(avatarStorage: AvatarStorage) {
         val user = repository.getCurrentUser() ?: return
         if (user.avatarUrl != null) return
@@ -154,7 +148,6 @@ class ProfileViewModel(
         _status.update { it.copy(infoMessage = null) }
     }
 
-    /** Dipanggil saat logout agar state edit tidak terbawa ke akun lain. */
     fun resetState() {
         editName = ""
         editPhone = ""

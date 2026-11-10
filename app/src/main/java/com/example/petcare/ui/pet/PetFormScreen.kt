@@ -449,6 +449,7 @@ fun PetFormScreen(
 
             Button(
                 onClick = onSaveClick,
+                enabled = !uiState.isSaving,
                 shape = CircleShape,
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 0.dp,
@@ -484,7 +485,11 @@ fun PetFormScreen(
                     }
 
                     Text(
-                        text = if (isEditMode) "Simpan Perubahan" else "Simpan Profil Hewan",
+                        text = when {
+                            uiState.isSaving -> "Menyimpan ke Supabase..."
+                            isEditMode -> "Simpan Perubahan"
+                            else -> "Simpan Profil Hewan"
+                        },
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         ),

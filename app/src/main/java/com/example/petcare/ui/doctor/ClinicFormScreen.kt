@@ -51,9 +51,6 @@ import androidx.compose.ui.unit.dp
 import com.example.petcare.data.model.ClinicInfo
 import com.example.petcare.ui.theme.PetCareTheme
 
-/**
- * Stateful Container untuk Formulir Cabang Klinik (Tambah / Edit).
- */
 @Composable
 fun ClinicFormScreen(
     clinicId: String?,
@@ -93,13 +90,6 @@ fun ClinicFormScreen(
     )
 }
 
-/**
- * Stateless UI Content Form Klinik — Sesuai revisi:
- * - Kategori/keterangan kolom di bagian ATAS garis progress, bukan di antara garis.
- * - Pengisian jam disamakan dengan form dokter (Jam Mulai & Jam Selesai berdampingan).
- * - Tanpa suggestions/presets untuk jam operasional.
- * - Tanpa switch status aktif klinik.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClinicFormContent(
@@ -124,7 +114,6 @@ fun ClinicFormContent(
     var address by remember { mutableStateOf(clinicToEdit?.address ?: "") }
     var phone by remember { mutableStateOf(clinicToEdit?.phoneNumber ?: "") }
 
-    // Inisialisasi Jam Mulai dan Selesai (Format disamakan dengan form dokter)
     val initialStartHour = remember(clinicToEdit) {
         val raw = clinicToEdit?.operationalHours.orEmpty()
         if (raw.contains("-")) {
@@ -149,7 +138,6 @@ fun ClinicFormContent(
 
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    // Menghitung progress pengisian form (Nama, Alamat, Telepon, Jam Mulai, Jam Selesai)
     val requiredFieldsCount = 5
     val filledCount = listOf(
         name.isNotBlank(),
@@ -203,7 +191,7 @@ fun ClinicFormContent(
                                 phone.trim(),
                                 combinedHours,
                                 emergency,
-                                true, // Status aktif default true tanpa switch
+                                clinicToEdit?.isActive ?: true,
                                 description.trim()
                             )
                         }
@@ -244,7 +232,6 @@ fun ClinicFormContent(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header ringkas ikon klinik (Sesuai ketentuan tanpa foto)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -282,15 +269,11 @@ fun ClinicFormContent(
                 }
             }
 
-            // ==========================================
-            // PROGRESS FORM DENGAN KETERANGAN/KATEGORI KOLOM DI ATAS GARIS
-            // ==========================================
             ClinicFormProgressIndicatorCard(
                 filledCount = filledCount,
                 totalCount = requiredFieldsCount
             )
 
-            // Pesan Error Validasi jika ada
             if (validationError != null || errorMessage != null) {
                 Text(
                     text = validationError ?: errorMessage.orEmpty(),
@@ -299,9 +282,6 @@ fun ClinicFormContent(
                 )
             }
 
-            // ==========================================
-            // INPUT NAMA CABANG KLINIK
-            // ==========================================
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -312,9 +292,6 @@ fun ClinicFormContent(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            // ==========================================
-            // INPUT ALAMAT
-            // ==========================================
             OutlinedTextField(
                 value = address,
                 onValueChange = { address = it },
@@ -325,9 +302,6 @@ fun ClinicFormContent(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            // ==========================================
-            // INPUT NOMOR TELEPON
-            // ==========================================
             OutlinedTextField(
                 value = phone,
                 onValueChange = { phone = it },
@@ -338,9 +312,6 @@ fun ClinicFormContent(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            // ==========================================
-            // JAM OPERASIONAL: DISAMAKAN DENGAN FORM DOKTER (JAM MULAI & SELESAI, TANPA SUGGESTIONS)
-            // ==========================================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -366,9 +337,6 @@ fun ClinicFormContent(
                 )
             }
 
-            // ==========================================
-            // INPUT DESKRIPSI & FASILITAS
-            // ==========================================
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -379,9 +347,6 @@ fun ClinicFormContent(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            // ==========================================
-            // SWITCH: UGD 24 JAM
-            // ==========================================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -417,11 +382,6 @@ fun ClinicFormContent(
     }
 }
 
-/**
- * Komponen Indikator Progress Form Klinik:
- * Seluruh teks keterangan dan kolom berada di ATAS garis progress indicator,
- * garis berada di bawah tanpa ada elemen teks yang memotong atau berada di antara garis.
- */
 @Composable
 fun ClinicFormProgressIndicatorCard(
     filledCount: Int,
@@ -438,7 +398,6 @@ fun ClinicFormProgressIndicatorCard(
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        // Teks "Form Filled" dan status kolom sepenuhnya di ATAS garis
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -458,7 +417,6 @@ fun ClinicFormProgressIndicatorCard(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Garis progress indikator tepat di BAWAH teks
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier

@@ -69,14 +69,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.petcare.ui.theme.PetCareTheme
 
-/**
- * Halaman Login PetCare — Clean, Flat, Aesthetic (Zero Shadow)
- * Terinspirasi dari referensi desain PawCare:
- * - Blok header Sky Blue (`primaryContainer`) dengan siluet telapak kaki putih.
- * - Kanvas utama putih bersih (`surface`) tanpa bayangan (0.dp elevation).
- * - Input field flat dengan sudut membulat lembut (`surfaceContainer`).
- * - Tombol kapsul utama hitam `Ink` (`primary`) dengan lingkaran aksen `Sky Blue` di sisi kiri.
- */
 @Composable
 fun LoginScreen(
     uiState: AuthUiState,
@@ -119,7 +111,6 @@ fun LoginScreen(
                 .imePadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            // ===== HERO HEADER SKY BLUE (FLAT, CLEAN, NO SHADOW) =====
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,7 +118,7 @@ fun LoginScreen(
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .padding(horizontal = 22.dp, vertical = 24.dp)
             ) {
-                // Dekorasi siluet Paw putih besar di sudut kanan atas (seperti referensi PawCare)
+
                 Icon(
                     imageVector = Icons.Outlined.Pets,
                     contentDescription = null,
@@ -140,7 +131,6 @@ fun LoginScreen(
                 )
 
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // Brand Logo "PetCare" ala PawCare
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -168,7 +158,6 @@ fun LoginScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
 
-                        // Lingkaran ikon putih bersih di pojok kanan
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
@@ -259,7 +248,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ===== PESAN ERROR FLAT =====
             AnimatedVisibility(visible = uiState.errorMessage != null) {
                 uiState.errorMessage?.let { errorMsg ->
                     Row(
@@ -287,7 +275,6 @@ fun LoginScreen(
                 }
             }
 
-            // ===== INPUT EMAIL (FLAT ROUNDED) =====
             Text(
                 text = "Email",
                 style = MaterialTheme.typography.labelLarge,
@@ -323,7 +310,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ===== INPUT KATA SANDI (FLAT ROUNDED) =====
             Text(
                 text = "Kata Sandi",
                 style = MaterialTheme.typography.labelLarge,
@@ -387,7 +373,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(26.dp))
 
-            // ===== TOMBOL PILL SIGNATURE ALA "Let's Go" PAWCARE (NO SHADOW) =====
+
             Button(
                 onClick = {
                     focusManager.clearFocus()
@@ -414,7 +400,6 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Lingkaran Sky Blue di sebelah kiri dalam kapsul Ink
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -446,7 +431,6 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
 
-                    // Panah kanan halus (seperti `>>>` pada referensi)
                     Row(
                         modifier = Modifier.padding(end = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -469,7 +453,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ===== BANNER BAWAH MENUJU REGISTER (FLAT CARD TANPA SHADOW) =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -497,7 +480,6 @@ fun LoginScreen(
                     )
                 }
 
-                // Pill Sky Blue seperti tombol "Use Now" di referensi tengah
                 Box(
                     modifier = Modifier
                         .clip(CircleShape)

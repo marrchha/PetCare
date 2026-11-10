@@ -11,9 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * State UI untuk halaman Login dan Register.
- */
 data class AuthUiState(
     val fullName: String = "",
     val email: String = "",
@@ -26,10 +23,6 @@ data class AuthUiState(
     val currentUser: UserProfile? = null
 )
 
-/**
- * ViewModel untuk menangani state dan logika bisnis pada halaman Login & Register.
- * Memenuhi ketentuan teknis wajib penggunaan ViewModel pada arsitektur kode.
- */
 class AuthViewModel(
     private val authRepository: AuthRepository = AuthRepository()
 ) : ViewModel() {

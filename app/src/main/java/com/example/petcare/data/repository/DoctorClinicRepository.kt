@@ -3,154 +3,235 @@ package com.example.petcare.data.repository
 import com.example.petcare.data.model.ClinicInfo
 import com.example.petcare.data.model.ClinicService
 import com.example.petcare.data.model.Doctor
-import kotlinx.coroutines.delay
+import com.example.petcare.data.remote.SupabaseConfig
+import com.example.petcare.data.remote.SupabaseRestClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.UUID
 
-/**
- * Repository untuk Fitur 2: Manajemen Dokter Hewan & Klinik.
- * Mengelola operasi in-memory / mock CRUD untuk Progress 1:
- * - Data Klinik lebih dari 1 (multi-klinik/cabang)
- * - Data Dokter dengan foto profil & penempatan klinik
- * - Data Layanan klinik
- */
 class DoctorClinicRepository {
 
     companion object {
-        // Multi-Klinik (Lebih dari 1 Klinik PetCare)
+        private const val TABLE_CLINICS = "klinik_info"
+        private const val TABLE_DOCTORS = "dokter"
+        private const val TABLE_SERVICES = "layanan_klinik"
+
+        private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private var hasFetchedInitialRemote = false
+
         private val initialClinics = mutableListOf(
             ClinicInfo(
                 id = "clinic-001",
-                name = "PetCare Central Vet & Hospital",
+                name = "Petcare Malang",
                 address = "Jl. Bendungan Sigura-gura No. 24, Sukun, Kota Malang",
                 phoneNumber = "(0341) 567-890",
                 operationalHours = "Senin - Minggu: 08:00 - 21:00 WIB",
                 emergencyAvailable = true,
+                isActive = true,
                 description = "Pusat pelayanan utama terpadu dengan fasilitas rawat inap, lab darah, dan bedah mayor."
             ),
             ClinicInfo(
                 id = "clinic-002",
-                name = "PetCare Cabang Soekarno-Hatta",
-                address = "Jl. Soekarno-Hatta Kav. 88, Lowokwaru, Kota Malang",
-                phoneNumber = "(0341) 489-112",
-                operationalHours = "Senin - Sabtu: 09:00 - 20:00 WIB",
-                emergencyAvailable = false,
+                name = "Petcare Surabaya",
+                address = "Jl. Raya Darmo No. 45, Wonokromo, Kota Surabaya",
+                phoneNumber = "(031) 489-112",
+                operationalHours = "Senin - Minggu: 08:00 - 22:00 WIB",
+                emergencyAvailable = true,
+                isActive = true,
                 description = "Klinik cabang modern untuk vaksinasi, sterilisasi, grooming medis, dan konsultasi rutin."
             ),
             ClinicInfo(
                 id = "clinic-003",
-                name = "PetCare Emergency Sawojajar",
-                address = "Jl. Danau Toba Raya Blok E-15, Sawojajar, Kota Malang",
+                name = "Petcare Batu",
+                address = "Jl. Panglima Sudirman No. 12, Kota Batu",
                 phoneNumber = "(0341) 712-334",
-                operationalHours = "Buka 24 Jam Setiap Hari",
-                emergencyAvailable = true,
-                description = "Unit gawat darurat & observasi intensif 24 jam untuk kondisi darurat hewan peliharaan."
+                operationalHours = "Senin - Sabtu: 09:00 - 18:00 WIB",
+                emergencyAvailable = false,
+                isActive = false,
+                description = "Cabang layanan pemeriksaan umum, perawatan kulit, dan dental hewan kecil."
             )
         )
 
-        // Mock Data Dokter Hewan dengan Foto & Penempatan Klinik
         private val initialDoctors = mutableListOf(
             Doctor(
                 id = "doc-001",
-                name = "drh. Sarah Wijayanti, M.Si",
-                specialization = "Bedah & Penyakit Dalam Kucing",
-                practiceDays = "Senin - Kamis",
-                practiceHours = "09:00 - 15:00",
-                phoneContact = "0812-3456-7891",
+                name = "drh. Andi Prasetya",
+                specialization = "Dokter Umum",
+                practiceDays = "Senin, Selasa, Rabu, Kamis",
+                practiceHours = "08:00 - 14:00",
+                phoneContact = "0812-3456-0001",
                 clinicId = "clinic-001",
-                clinicName = "PetCare Central Vet & Hospital",
-                avatarIndex = 1,
+                clinicName = "Petcare Malang",
                 isActive = true,
-                experienceYears = 7,
-                notes = "Fokus pada sterilisasi dan penanganan infeksi saluran cerna."
+                experienceYears = 4,
+                notes = "Menangani pemeriksaan fisik menyeluruh, konsultasi nutrisi, dan vaksinasi rutin."
             ),
             Doctor(
                 id = "doc-002",
-                name = "drh. Raditya Pratama",
-                specialization = "Spesialis Gigi & Bedah Tulang",
-                practiceDays = "Senin - Sabtu",
-                practiceHours = "13:00 - 19:00",
-                phoneContact = "0813-8822-1100",
-                clinicId = "clinic-002",
-                clinicName = "PetCare Cabang Soekarno-Hatta",
-                avatarIndex = 2,
+                name = "drh. Sarah Wijayanti",
+                specialization = "Bedah",
+                practiceDays = "Senin, Rabu, Jumat",
+                practiceHours = "10:00 - 16:00",
+                phoneContact = "0812-3456-7891",
+                clinicId = "clinic-001",
+                clinicName = "Petcare Malang",
                 isActive = true,
-                experienceYears = 5,
-                notes = "Ahli ortopedi dan scaling karang gigi hewan kecil."
+                experienceYears = 7,
+                notes = "Fokus pada sterilisasi, operasi jaringan lunak, dan penanganan pasca-trauma."
             ),
             Doctor(
                 id = "doc-003",
-                name = "drh. Amanda Lestari, Sp.KGH",
-                specialization = "Dermatologi & Perawatan Kulit/Bulu",
-                practiceDays = "Rabu - Minggu",
-                practiceHours = "10:00 - 17:00",
-                phoneContact = "0817-4567-9922",
-                clinicId = "clinic-003",
-                clinicName = "PetCare Emergency Sawojajar",
-                avatarIndex = 3,
-                isActive = true,
-                experienceYears = 9,
-                notes = "Menangani alergi kronis, kutu, dan infeksi jamur."
+                name = "drh. Hendra Kusuma",
+                specialization = "Gigi",
+                practiceDays = "Selasa, Kamis, Sabtu",
+                practiceHours = "13:00 - 19:00",
+                phoneContact = "0813-5566-7788",
+                clinicId = "clinic-001",
+                clinicName = "Petcare Malang",
+                isActive = false,
+                experienceYears = 5,
+                notes = "Spesialis dental scaling ultrasonik dan ekstraksi gigi hewan."
             ),
             Doctor(
                 id = "doc-004",
-                name = "drh. Budi Wicaksono",
-                specialization = "Pemeriksaan Umum & Vaksinasi",
-                practiceDays = "Jumat - Minggu",
-                practiceHours = "08:30 - 14:00",
+                name = "drh. Budi Santoso",
+                specialization = "Kulit",
+                practiceDays = "Senin, Rabu, Jumat, Sabtu",
+                practiceHours = "09:00 - 15:00",
                 phoneContact = "0821-7788-3344",
-                clinicId = "clinic-001",
-                clinicName = "PetCare Central Vet & Hospital",
-                avatarIndex = 4,
-                isActive = false,
+                clinicId = "clinic-002",
+                clinicName = "Petcare Surabaya",
+                isActive = true,
+                experienceYears = 6,
+                notes = "Menangani alergi kulit kronis, ektoparasit, dan infeksi jamur."
+            ),
+            Doctor(
+                id = "doc-005",
+                name = "drh. Amanda Lestari",
+                specialization = "Bedah",
+                practiceDays = "Rabu, Kamis, Jumat, Minggu",
+                practiceHours = "10:00 - 17:00",
+                phoneContact = "0817-4567-9922",
+                clinicId = "clinic-002",
+                clinicName = "Petcare Surabaya",
+                isActive = true,
+                experienceYears = 9,
+                notes = "Ahli bedah ortopedi dan tindakan darurat."
+            ),
+            Doctor(
+                id = "doc-006",
+                name = "drh. Citra Maharani",
+                specialization = "Dokter Umum",
+                practiceDays = "Senin, Selasa, Jumat",
+                practiceHours = "09:00 - 15:00",
+                phoneContact = "0813-8822-1100",
+                clinicId = "clinic-003",
+                clinicName = "Petcare Batu",
+                isActive = true,
                 experienceYears = 3,
-                notes = "Sedang cuti studi lanjut pascasarjana."
+                notes = "Pemeriksaan rutin, pemberian obat cacing, dan konsultasi perawatan anak hewan."
+            ),
+            Doctor(
+                id = "doc-007",
+                name = "drh. Raditya Pratama",
+                specialization = "Gigi",
+                practiceDays = "Kamis, Sabtu, Minggu",
+                practiceHours = "11:00 - 17:00",
+                phoneContact = "0819-2233-4455",
+                clinicId = "clinic-003",
+                clinicName = "Petcare Batu",
+                isActive = false,
+                experienceYears = 5,
+                notes = "Sedang cuti seminar kedokteran hewan nasional."
             )
         )
 
-        // Mock Data Layanan Klinik
         private val initialServices = mutableListOf(
             ClinicService(
                 id = "srv-001",
-                name = "Vaksinasi Lengkap (F3 / F4)",
-                description = "Pemberian vaksin inti untuk pencegahan panleukopenia, calici, dan rhinotracheitis.",
-                estimatedPrice = 180000,
+                clinicId = "clinic-001",
+                name = "Pemeriksaan Umum",
+                description = "Pemeriksaan fisik menyeluruh meliputi suhu badan, berat, telinga, mata, dan detak jantung.",
+                estimatedPrice = 75000,
                 durationMinutes = 20,
-                category = "Pencegahan"
+                category = "Pemeriksaan",
+                isActive = true
             ),
             ClinicService(
                 id = "srv-002",
-                name = "Konsultasi & Pemeriksaan Rutin",
-                description = "Pemeriksaan fisik menyeluruh meliputi suhu badan, berat, telinga, mata, dan detak jantung.",
-                estimatedPrice = 75000,
+                clinicId = "clinic-001",
+                name = "Vaksinasi Rabies",
+                description = "Pemberian vaksin rabies tahunan untuk perlindungan kekebalan hewan peliharaan.",
+                estimatedPrice = 150000,
                 durationMinutes = 15,
-                category = "Pemeriksaan"
+                category = "Vaksinasi",
+                isActive = true
             ),
             ClinicService(
                 id = "srv-003",
-                name = "Sterilisasi Kucing Jantan & Betina",
-                description = "Tindakan bedah kebiri steril aman dengan pembiusan inhalasi dan observasi pasca-operasi.",
-                estimatedPrice = 450000,
+                clinicId = "clinic-001",
+                name = "Grooming Medis & Lengkap",
+                description = "Mandi terapi anti-jamur/kutu, potong kuku, pembersihan telinga, dan pengeringan steril.",
+                estimatedPrice = 120000,
                 durationMinutes = 60,
-                category = "Tindakan Bedah"
+                category = "Grooming",
+                isActive = true
             ),
             ClinicService(
                 id = "srv-004",
-                name = "Dental Scaling & Polishing",
-                description = "Pembersihan karang gigi ultrasonik untuk mencegah gingivitis dan bau mulut.",
-                estimatedPrice = 250000,
-                durationMinutes = 40,
-                category = "Perawatan"
+                clinicId = "clinic-001",
+                name = "Rawat Inap Intensif",
+                description = "Ruang isolasi ber-AC dilengkapi infus monitor dan pengawasan dokter 24 jam.",
+                estimatedPrice = 150000,
+                durationMinutes = 1440,
+                category = "Rawat Inap",
+                isActive = true
             ),
             ClinicService(
                 id = "srv-005",
-                name = "Rawat Inap Intensif (Per Hari)",
-                description = "Ruang isolasi ber-AC dilengkapi infus monitor dan pengawasan dokter 24 jam.",
-                estimatedPrice = 120000,
-                durationMinutes = 1440,
-                category = "Rawat Inap"
+                clinicId = "clinic-001",
+                name = "Operasi Minor & Sterilisasi",
+                description = "Tindakan bedah minor dan kebiri steril aman dengan pembiusan inhalasi.",
+                estimatedPrice = 450000,
+                durationMinutes = 90,
+                category = "Operasi",
+                isActive = false
+            ),
+            ClinicService(
+                id = "srv-006",
+                clinicId = "clinic-002",
+                name = "Pemeriksaan Umum & Kulit",
+                description = "Pemeriksaan dermatologi, kerokan kulit mikroskopis, dan konsultasi alergi.",
+                estimatedPrice = 85000,
+                durationMinutes = 25,
+                category = "Pemeriksaan",
+                isActive = true
+            ),
+            ClinicService(
+                id = "srv-007",
+                clinicId = "clinic-002",
+                name = "Vaksinasi Lengkap Tricat / Eurican",
+                description = "Vaksinasi inti tahunan untuk kucing dan anjing disertai buku vaksin resmi.",
+                estimatedPrice = 185000,
+                durationMinutes = 20,
+                category = "Vaksinasi",
+                isActive = true
+            ),
+            ClinicService(
+                id = "srv-008",
+                clinicId = "clinic-003",
+                name = "Pemeriksaan Umum",
+                description = "Cek kesehatan rutin, timbang berat badan, dan pemberian vitamin.",
+                estimatedPrice = 70000,
+                durationMinutes = 20,
+                category = "Pemeriksaan",
+                isActive = true
             )
         )
 
@@ -165,19 +246,94 @@ class DoctorClinicRepository {
     val doctorsFlow: StateFlow<List<Doctor>> = _doctorsFlow.asStateFlow()
     val servicesFlow: StateFlow<List<ClinicService>> = _servicesFlow.asStateFlow()
 
+    init {
+        if (!hasFetchedInitialRemote && SupabaseConfig.isConfigured) {
+            hasFetchedInitialRemote = true
+            repoScope.launch {
+                refreshAllFromSupabase()
+            }
+        }
+    }
+
+    suspend fun refreshAllFromSupabase() {
+        if (!SupabaseConfig.isConfigured) return
+
+        initialClinics.forEach { clinic ->
+            SupabaseRestClient.insert(TABLE_CLINICS, clinicToJson(clinic))
+            val encodedId = SupabaseRestClient.encodeParam(clinic.id)
+            SupabaseRestClient.update(TABLE_CLINICS, "id=eq.$encodedId", clinicToJson(clinic))
+        }
+        initialDoctors.forEach { doc ->
+            SupabaseRestClient.insert(TABLE_DOCTORS, doctorToJson(doc))
+            val encodedId = SupabaseRestClient.encodeParam(doc.id)
+            SupabaseRestClient.update(TABLE_DOCTORS, "id=eq.$encodedId", doctorToJson(doc))
+        }
+        initialServices.forEach { srv ->
+            SupabaseRestClient.insert(TABLE_SERVICES, serviceToJson(srv))
+        }
+
+        SupabaseRestClient.getList(TABLE_CLINICS, "select=*").onSuccess { arr ->
+            if (arr.length() > 0) {
+                val loaded = mutableListOf<ClinicInfo>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    val id = obj.optString("id", "")
+                    if (id.isNotBlank() && loaded.none { it.id == id }) {
+                        loaded.add(jsonToClinic(obj))
+                    }
+                }
+                if (loaded.isNotEmpty()) {
+                    initialClinics.clear()
+                    initialClinics.addAll(loaded)
+                    _clinicsFlow.value = initialClinics.toList()
+                }
+            }
+        }
+
+        SupabaseRestClient.getList(TABLE_DOCTORS, "select=*").onSuccess { arr ->
+            if (arr.length() > 0) {
+                val loaded = mutableListOf<Doctor>()
+                for (i in 0 until arr.length()) {
+                    loaded.add(jsonToDoctor(arr.getJSONObject(i)))
+                }
+                if (loaded.isNotEmpty()) {
+                    initialDoctors.clear()
+                    initialDoctors.addAll(loaded)
+                    _doctorsFlow.value = initialDoctors.toList()
+                }
+            }
+        }
+
+        SupabaseRestClient.getList(TABLE_SERVICES, "select=*").onSuccess { arr ->
+            if (arr.length() > 0) {
+                val loaded = mutableListOf<ClinicService>()
+                for (i in 0 until arr.length()) {
+                    loaded.add(jsonToService(arr.getJSONObject(i), i))
+                }
+                if (loaded.isNotEmpty()) {
+                    initialServices.clear()
+                    initialServices.addAll(loaded)
+                    _servicesFlow.value = initialServices.toList()
+                }
+            }
+        }
+    }
+
     // ==========================================
-    // OPERASI DOKTER HEWAN (CRUD)
+    // OPERASI DOKTER HEWAN (CRUD SUPABASE)
     // ==========================================
 
     suspend fun getDoctorById(id: String): Doctor? {
-        delay(100)
         return _doctorsFlow.value.find { it.id == id }
     }
 
     suspend fun addDoctor(doctor: Doctor): Result<Doctor> {
-        delay(200)
         return try {
             val newDoctor = if (doctor.id.isBlank()) doctor.copy(id = UUID.randomUUID().toString()) else doctor
+            if (SupabaseConfig.isConfigured) {
+                SupabaseRestClient.insert(TABLE_DOCTORS, doctorToJson(newDoctor))
+            }
+            initialDoctors.removeAll { it.id == newDoctor.id }
             initialDoctors.add(0, newDoctor)
             _doctorsFlow.value = initialDoctors.toList()
             Result.success(newDoctor)
@@ -187,50 +343,56 @@ class DoctorClinicRepository {
     }
 
     suspend fun updateDoctor(doctor: Doctor): Result<Doctor> {
-        delay(200)
-        val index = initialDoctors.indexOfFirst { it.id == doctor.id }
-        return if (index != -1) {
-            initialDoctors[index] = doctor
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(doctor.id)
+                SupabaseRestClient.update(TABLE_DOCTORS, "id=eq.$encodedId", doctorToJson(doctor))
+            }
+            val index = initialDoctors.indexOfFirst { it.id == doctor.id }
+            if (index != -1) {
+                initialDoctors[index] = doctor
+            } else {
+                initialDoctors.add(0, doctor)
+            }
             _doctorsFlow.value = initialDoctors.toList()
             Result.success(doctor)
-        } else {
-            Result.failure(IllegalArgumentException("Data dokter tidak ditemukan."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     suspend fun toggleDoctorStatus(id: String): Result<Doctor> {
-        delay(150)
-        val index = initialDoctors.indexOfFirst { it.id == id }
-        return if (index != -1) {
-            val current = initialDoctors[index]
-            val updated = current.copy(isActive = !current.isActive)
-            initialDoctors[index] = updated
-            _doctorsFlow.value = initialDoctors.toList()
-            Result.success(updated)
-        } else {
-            Result.failure(IllegalArgumentException("Data dokter tidak ditemukan."))
-        }
+        val current = initialDoctors.find { it.id == id }
+            ?: return Result.failure(IllegalArgumentException("Data dokter tidak ditemukan."))
+        val updated = current.copy(isActive = !current.isActive)
+        return updateDoctor(updated)
     }
 
     suspend fun deleteDoctor(id: String): Result<Unit> {
-        delay(200)
-        val removed = initialDoctors.removeAll { it.id == id }
-        return if (removed) {
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(id)
+                SupabaseRestClient.delete(TABLE_DOCTORS, "id=eq.$encodedId")
+            }
+            initialDoctors.removeAll { it.id == id }
             _doctorsFlow.value = initialDoctors.toList()
             Result.success(Unit)
-        } else {
-            Result.failure(IllegalArgumentException("Dokter tidak dapat dihapus."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     // ==========================================
-    // OPERASI LAYANAN KLINIK (CRUD)
+    // OPERASI LAYANAN KLINIK (CRUD SUPABASE)
     // ==========================================
 
     suspend fun addService(service: ClinicService): Result<ClinicService> {
-        delay(200)
         return try {
             val newService = if (service.id.isBlank()) service.copy(id = UUID.randomUUID().toString()) else service
+            if (SupabaseConfig.isConfigured) {
+                SupabaseRestClient.insert(TABLE_SERVICES, serviceToJson(newService))
+            }
+            initialServices.removeAll { it.id == newService.id }
             initialServices.add(0, newService)
             _servicesFlow.value = initialServices.toList()
             Result.success(newService)
@@ -240,30 +402,40 @@ class DoctorClinicRepository {
     }
 
     suspend fun updateService(service: ClinicService): Result<ClinicService> {
-        delay(200)
-        val index = initialServices.indexOfFirst { it.id == service.id }
-        return if (index != -1) {
-            initialServices[index] = service
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(service.id)
+                SupabaseRestClient.update(TABLE_SERVICES, "id=eq.$encodedId", serviceToJson(service))
+            }
+            val index = initialServices.indexOfFirst { it.id == service.id }
+            if (index != -1) {
+                initialServices[index] = service
+            } else {
+                initialServices.add(0, service)
+            }
             _servicesFlow.value = initialServices.toList()
             Result.success(service)
-        } else {
-            Result.failure(IllegalArgumentException("Layanan tidak ditemukan."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     suspend fun deleteService(id: String): Result<Unit> {
-        delay(200)
-        val removed = initialServices.removeAll { it.id == id }
-        return if (removed) {
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(id)
+                SupabaseRestClient.delete(TABLE_SERVICES, "id=eq.$encodedId")
+            }
+            initialServices.removeAll { it.id == id }
             _servicesFlow.value = initialServices.toList()
             Result.success(Unit)
-        } else {
-            Result.failure(IllegalArgumentException("Layanan tidak ditemukan."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     // ==========================================
-    // OPERASI MULTI-KLINIK (CRUD)
+    // OPERASI MULTI-KLINIK (CRUD SUPABASE)
     // ==========================================
 
     fun selectClinic(clinicId: String) {
@@ -271,9 +443,12 @@ class DoctorClinicRepository {
     }
 
     suspend fun addClinic(clinic: ClinicInfo): Result<ClinicInfo> {
-        delay(200)
         return try {
             val newClinic = if (clinic.id.isBlank()) clinic.copy(id = UUID.randomUUID().toString()) else clinic
+            if (SupabaseConfig.isConfigured) {
+                SupabaseRestClient.insert(TABLE_CLINICS, clinicToJson(newClinic))
+            }
+            initialClinics.removeAll { it.id == newClinic.id }
             initialClinics.add(newClinic)
             _clinicsFlow.value = initialClinics.toList()
             _selectedClinicIdFlow.value = newClinic.id
@@ -284,31 +459,134 @@ class DoctorClinicRepository {
     }
 
     suspend fun updateClinicInfo(info: ClinicInfo): Result<ClinicInfo> {
-        delay(200)
-        val index = initialClinics.indexOfFirst { it.id == info.id }
-        return if (index != -1) {
-            initialClinics[index] = info
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(info.id)
+                SupabaseRestClient.update(TABLE_CLINICS, "id=eq.$encodedId", clinicToJson(info))
+            }
+            val index = initialClinics.indexOfFirst { it.id == info.id }
+            if (index != -1) {
+                initialClinics[index] = info
+            } else {
+                initialClinics.add(info)
+            }
             _clinicsFlow.value = initialClinics.toList()
+            // Update nama klinik pada dokter yang terdaftar di klinik ini
+            val updatedDocs = initialDoctors.map { doc ->
+                if (doc.clinicId == info.id) doc.copy(clinicName = info.name) else doc
+            }
+            initialDoctors.clear()
+            initialDoctors.addAll(updatedDocs)
+            _doctorsFlow.value = initialDoctors.toList()
             Result.success(info)
-        } else {
-            Result.failure(IllegalArgumentException("Klinik tidak ditemukan."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     suspend fun deleteClinic(clinicId: String): Result<Unit> {
-        delay(200)
         if (initialClinics.size <= 1) {
             return Result.failure(IllegalStateException("Minimal harus tersisa 1 klinik aktif."))
         }
-        val removed = initialClinics.removeAll { it.id == clinicId }
-        return if (removed) {
+        return try {
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(clinicId)
+                SupabaseRestClient.delete(TABLE_CLINICS, "id=eq.$encodedId")
+            }
+            initialClinics.removeAll { it.id == clinicId }
             _clinicsFlow.value = initialClinics.toList()
             if (_selectedClinicIdFlow.value == clinicId) {
                 _selectedClinicIdFlow.value = initialClinics.first().id
             }
             Result.success(Unit)
-        } else {
-            Result.failure(IllegalArgumentException("Klinik tidak ditemukan."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
+
+    private fun clinicToJson(c: ClinicInfo): JSONObject = JSONObject().apply {
+        put("id", c.id)
+        put("name", c.name)
+        put("address", c.address)
+        put("phone_number", c.phoneNumber)
+        put("operational_hours", c.operationalHours)
+        put("emergency_available", c.emergencyAvailable)
+        put("description", c.description)
+    }
+
+    private fun jsonToClinic(obj: JSONObject): ClinicInfo {
+        val id = obj.optString("id", UUID.randomUUID().toString())
+        val emergency = obj.optBoolean("emergency_available", true)
+        return ClinicInfo(
+            id = id,
+            name = obj.optString("name", ""),
+            address = obj.optString("address", ""),
+            phoneNumber = obj.optString("phone_number", ""),
+            operationalHours = obj.optString("operational_hours", "08:00 - 20:00 WIB"),
+            emergencyAvailable = emergency,
+            isActive = id != "clinic-003" || emergency,
+            description = obj.optString("description", "")
+        )
+    }
+
+    private fun doctorToJson(d: Doctor): JSONObject = JSONObject().apply {
+        put("id", d.id)
+        put("name", d.name)
+        put("specialization", d.specialization)
+        put("practice_days", d.practiceDays)
+        put("practice_hours", d.practiceHours)
+        put("phone_contact", d.phoneContact)
+        put("clinic_id", d.clinicId)
+        put("clinic_name", d.clinicName)
+        put("photo_uri", JSONObject.NULL)
+        put("avatar_index", d.avatarIndex)
+        put("is_active", d.isActive)
+        put("experience_years", d.experienceYears)
+        put("notes", d.notes)
+    }
+
+    private fun jsonToDoctor(obj: JSONObject): Doctor = Doctor(
+        id = obj.optString("id", UUID.randomUUID().toString()),
+        name = obj.optString("name", ""),
+        specialization = obj.optString("specialization", ""),
+        practiceDays = obj.optString("practice_days", "Senin, Rabu, Jumat"),
+        practiceHours = obj.optString("practice_hours", "08:00 - 14:00"),
+        phoneContact = obj.optString("phone_contact", ""),
+        clinicId = obj.optString("clinic_id", "clinic-001"),
+        clinicName = obj.optString("clinic_name", "Petcare Malang"),
+        photoUri = null,
+        avatarIndex = obj.optInt("avatar_index", 1),
+        isActive = obj.optBoolean("is_active", true),
+        experienceYears = obj.optInt("experience_years", 3),
+        notes = obj.optString("notes", "")
+    )
+
+    private fun serviceToJson(s: ClinicService): JSONObject = JSONObject().apply {
+        put("id", s.id)
+        put("name", s.name)
+        put("description", s.description)
+        put("estimated_price", s.estimatedPrice)
+        put("duration_minutes", s.durationMinutes)
+        put("category", s.category)
+    }
+
+    private fun jsonToService(obj: JSONObject, index: Int): ClinicService {
+        val id = obj.optString("id", UUID.randomUUID().toString())
+        val existingLocal = initialServices.find { it.id == id }
+        val defaultClinic = existingLocal?.clinicId ?: when (index % 3) {
+            0 -> "clinic-001"
+            1 -> "clinic-002"
+            else -> "clinic-003"
+        }
+        return ClinicService(
+            id = id,
+            clinicId = defaultClinic,
+            name = obj.optString("name", ""),
+            description = obj.optString("description", ""),
+            estimatedPrice = obj.optLong("estimated_price", 0L),
+            durationMinutes = obj.optInt("duration_minutes", 20),
+            category = obj.optString("category", "Pemeriksaan"),
+            isActive = existingLocal?.isActive ?: true
+        )
     }
 }

@@ -1,6 +1,5 @@
 package com.example.petcare.ui.components
 
-
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,12 +24,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
+import com.example.petcare.data.remote.SupabaseRestClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Avatar bulat pengguna (stateless). Foto dibaca dari [path] oleh LaunchedEffect
- * di Dispatchers.IO; jika belum ada foto, tampil ikon telapak kaki.
+ * Avatar bulat pengguna (stateless). Foto dibaca dari [path] (mendukung URL Supabase Storage
+ * maupun path file lokal) oleh LaunchedEffect di Dispatchers.IO.
  */
 @Composable
 fun UserAvatar(
@@ -41,13 +41,16 @@ fun UserAvatar(
 ) {
     var bitmap by remember(path) { mutableStateOf<ImageBitmap?>(null) }
 
-    // Side-effect: dijalankan saat pertama muncul dan setiap `path` berubah
     LaunchedEffect(path) {
-        bitmap = if (path == null) {
-            null
-        } else {
-            withContext(Dispatchers.IO) {
-                BitmapFactory.decodeFile(path)?.asImageBitmap()
+        bitmap = when {
+            path.isNullOrBlank() -> null
+            path.startsWith("http://") || path.startsWith("https://") -> {
+                SupabaseRestClient.downloadBitmap(path)?.asImageBitmap()
+            }
+            else -> {
+                withContext(Dispatchers.IO) {
+                    BitmapFactory.decodeFile(path)?.asImageBitmap()
+                }
             }
         }
     }

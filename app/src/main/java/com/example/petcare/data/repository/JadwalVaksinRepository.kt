@@ -1,18 +1,21 @@
 package com.example.petcare.data.repository
 
 import com.example.petcare.data.model.JadwalVaksin
+import com.example.petcare.data.remote.SupabaseConfig
+import com.example.petcare.data.remote.SupabaseRestClient
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
  * Repository untuk mengelola data jadwal vaksin dan kontrol hewan peliharaan (Fitur 1 - Sabitha Marsyarira Nayla).
- * Menggunakan penyimpanan data lokal in-memory (mock repository) dengan operasi CRUD lengkap.
+ * Terintegrasi dengan tabel Supabase `jadwal_vaksin` (Read, Insert, Update, Delete).
  */
 class JadwalVaksinRepository {
 
     companion object {
+        private const val TABLE_JADWAL = "jadwal_vaksin"
+
         private val localCache = mutableListOf(
             JadwalVaksin(
                 id = "jv-001",
@@ -67,46 +70,100 @@ class JadwalVaksinRepository {
 
     suspend fun getJadwalList(userId: String? = null): Result<List<JadwalVaksin>> =
         withContext(Dispatchers.IO) {
-            delay(150)
-            val filtered = if (!userId.isNullOrBlank()) {
-                localCache.filter { it.userId == userId || it.userId == "user-demo-001" }
-            } else {
-                localCache.toList()
+            if (SupabaseConfig.isConfigured) {
+                val remoteRes = SupabaseRestClient.getList(
+                    table = TABLE_JADWAL,
+                    queryParams = "select=*&order=created_at.desc"
+                )
+                remoteRes.onSuccess { arr ->
+                    if (arr.length() == 0 && localCache.isNotEmpty()) {
+                        localCache.forEach { seed ->
+                            SupabaseRestClient.insert(TABLE_JADWAL, seed.toJson())
+                        }
+                    } else if (arr.length() > 0) {
+                        val list = mutableListOf<JadwalVaksin>()
+                        for (i in 0 until arr.length()) {
+                            list.add(JadwalVaksin.fromJson(arr.getJSONObject(i)))
+                        }
+                        localCache.clear()
+                        localCache.addAll(list)
+                    }
+                }
             }
-            Result.success(filtered)
+            Result.success(localCache.toList())
         }
 
     suspend fun getJadwalById(id: String): Result<JadwalVaksin?> = withContext(Dispatchers.IO) {
         val cached = localCache.find { it.id == id }
-        Result.success(cached)
+        if (cached != null) return@withContext Result.success(cached)
+
+        if (SupabaseConfig.isConfigured) {
+            val encodedId = SupabaseRestClient.encodeParam(id)
+            val arr = SupabaseRestClient.getList(
+                table = TABLE_JADWAL,
+                queryParams = "select=*&id=eq.$encodedId"
+            ).getOrNull()
+            if (arr != null && arr.length() > 0) {
+                return@withContext Result.success(JadwalVaksin.fromJson(arr.getJSONObject(0)))
+            }
+        }
+        Result.success(null)
     }
 
     suspend fun insertJadwal(jadwal: JadwalVaksin): Result<JadwalVaksin> =
         withContext(Dispatchers.IO) {
-            delay(150)
             val prepared = if (jadwal.id.isBlank()) {
                 jadwal.copy(id = UUID.randomUUID().toString())
             } else {
                 jadwal
             }
+
+            if (SupabaseConfig.isConfigured) {
+                SupabaseRestClient.insert(
+                    table = TABLE_JADWAL,
+                    payload = prepared.toJson()
+                ).onFailure { err ->
+                    return@withContext Result.failure(err)
+                }
+            }
+
+            localCache.removeAll { it.id == prepared.id }
             localCache.add(0, prepared)
             Result.success(prepared)
         }
 
     suspend fun updateJadwal(jadwal: JadwalVaksin): Result<JadwalVaksin> =
         withContext(Dispatchers.IO) {
-            delay(150)
+            if (SupabaseConfig.isConfigured) {
+                val encodedId = SupabaseRestClient.encodeParam(jadwal.id)
+                SupabaseRestClient.update(
+                    table = TABLE_JADWAL,
+                    matchQuery = "id=eq.$encodedId",
+                    payload = jadwal.toJson()
+                ).onFailure { err ->
+                    return@withContext Result.failure(err)
+                }
+            }
+
             val index = localCache.indexOfFirst { it.id == jadwal.id }
             if (index != -1) {
                 localCache[index] = jadwal
             } else {
-                localCache.add(jadwal)
+                localCache.add(0, jadwal)
             }
             Result.success(jadwal)
         }
 
     suspend fun deleteJadwal(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        delay(100)
+        if (SupabaseConfig.isConfigured) {
+            val encodedId = SupabaseRestClient.encodeParam(id)
+            SupabaseRestClient.delete(
+                table = TABLE_JADWAL,
+                matchQuery = "id=eq.$encodedId"
+            ).onFailure { err ->
+                return@withContext Result.failure(err)
+            }
+        }
         localCache.removeAll { it.id == id }
         Result.success(Unit)
     }

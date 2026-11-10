@@ -8,9 +8,11 @@ import java.util.UUID
  */
 data class ClinicService(
     val id: String = UUID.randomUUID().toString(),
+    val clinicId: String = "clinic-001",
     val name: String,
-    val description: String,
-    val estimatedPrice: Long,
-    val durationMinutes: Int,
-    val category: String = "Umum"
+    val description: String = "",
+    val estimatedPrice: Long = 0L,
+    val durationMinutes: Int = 30,
+    val category: String = "Pemeriksaan",
+    val isActive: Boolean = true
 )

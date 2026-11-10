@@ -13,5 +13,6 @@ data class ClinicInfo(
     val phoneNumber: String,
     val operationalHours: String = "08:00 - 20:00 WIB",
     val emergencyAvailable: Boolean = true,
+    val isActive: Boolean = true,
     val description: String = ""
 )
