@@ -354,6 +354,39 @@ class DoctorClinicViewModel(
         }
     }
 
+    // ==========================================
+    // ALIAS METHODS — kompatibilitas DoctorClinicListScreen
+    // ==========================================
+
+    /** Alias untuk onTabChange — digunakan oleh DoctorClinicListScreen */
+    fun onTabSelected(tabIndex: Int) = onTabChange(tabIndex)
+
+    /** Alias untuk closeDoctorFilterSheet */
+    fun dismissDoctorFilterSheet() = closeDoctorFilterSheet()
+
+    /** Alias untuk onTempDoctorClinicChange */
+    fun onTempDoctorClinicFilterChange(clinicId: String) = onTempDoctorClinicChange(clinicId)
+
+    /** Alias untuk onTempDoctorSpecializationChange */
+    fun onTempDoctorSpecFilterChange(spec: String) = onTempDoctorSpecializationChange(spec)
+
+    /** Alias untuk onTempDoctorStatusChange */
+    fun onTempDoctorStatusFilterChange(status: String) = onTempDoctorStatusChange(status)
+
+    /** Alias untuk onTempDoctorDayChange */
+    fun onTempDoctorDayFilterChange(day: String) = onTempDoctorDayChange(day)
+
+    /** Alias untuk resetDoctorFilter */
+    fun resetDoctorFilters() = resetDoctorFilter()
+
+    /** Alias untuk applyDoctorFilter */
+    fun applyDoctorFilters() = applyDoctorFilter()
+
+    /** Alias deleteDoctor tanpa onSuccess callback (untuk DoctorClinicListScreen) */
+    fun deleteDoctor(doctorId: String) {
+        deleteDoctor(doctorId, onSuccess = {})
+    }
+
     fun clearMessage() {
         _uiState.update { it.copy(userMessage = null, errorMessage = null) }
     }
