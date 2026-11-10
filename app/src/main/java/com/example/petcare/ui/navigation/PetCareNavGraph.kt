@@ -55,6 +55,10 @@ import com.example.petcare.ui.doctor.DoctorClinicListScreen
 import com.example.petcare.ui.doctor.DoctorClinicViewModel
 import com.example.petcare.ui.doctor.DoctorDetailScreen
 import com.example.petcare.ui.doctor.DoctorFormScreen
+import com.example.petcare.ui.feeding.FeedingDetailScreen
+import com.example.petcare.ui.feeding.FeedingFormScreen
+import com.example.petcare.ui.feeding.FeedingListScreen
+import com.example.petcare.ui.feeding.FeedingViewModel
 import com.example.petcare.ui.health.RiwayatKesehatanDetailScreen
 import com.example.petcare.ui.health.RiwayatKesehatanFormScreen
 import com.example.petcare.ui.health.RiwayatKesehatanListScreen
@@ -67,11 +71,13 @@ import com.example.petcare.ui.pet.PetDetailScreen
 import com.example.petcare.ui.pet.PetFormScreen
 import com.example.petcare.ui.pet.PetListScreen
 import com.example.petcare.ui.pet.PetViewModel
+import com.example.petcare.ui.profile.ProfileScreen
 
 object PetCareRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val PROFILE = "profile"
 
     // Route Fitur 1: Jadwal Vaksin & Kontrol (Sabitha Marsyarira Nayla - 245150401111032)
     const val JADWAL_LIST = "jadwal_list"
@@ -88,6 +94,15 @@ object PetCareRoutes {
     fun doctorDetailRoute(doctorId: String) = "doctor_detail/$doctorId"
     fun doctorFormRoute(doctorId: String? = null) =
         if (doctorId == null) "doctor_form" else "doctor_form?doctorId=$doctorId"
+
+    // Route Fitur 3: Jadwal Makan Harian (Jeanete Arthika Lorentz R. - 245150400111038)
+    const val FEEDING_LIST = "feeding_list"
+    const val FEEDING_DETAIL = "feeding_detail/{feedingId}"
+    const val FEEDING_FORM = "feeding_form?feedingId={feedingId}"
+
+    fun feedingDetailRoute(feedingId: String) = "feeding_detail/$feedingId"
+    fun feedingFormRoute(feedingId: String? = null) =
+        if (feedingId == null) "feeding_form" else "feeding_form?feedingId=$feedingId"
 
     // Route Fitur 4: Riwayat Kesehatan (Givenia Marudur Hasiana - 245150400111051)
     const val HEALTH_LIST = "health_list"
@@ -115,6 +130,7 @@ fun PetCareNavGraph(
     authViewModel: AuthViewModel = viewModel(),
     jadwalViewModel: JadwalVaksinViewModel = viewModel(),
     doctorViewModel: DoctorClinicViewModel = viewModel(),
+    feedingViewModel: FeedingViewModel = viewModel(),
     healthViewModel: RiwayatKesehatanViewModel = viewModel(),
     petViewModel: PetViewModel = viewModel()
 ) {
@@ -173,11 +189,17 @@ fun PetCareNavGraph(
         composable(route = PetCareRoutes.HOME) {
             HomePlaceholderScreen(
                 currentUser = authUiState.currentUser,
+                onOpenProfileClick = {
+                    navController.navigate(PetCareRoutes.PROFILE)
+                },
                 onOpenJadwalFeatureClick = {
                     navController.navigate(PetCareRoutes.JADWAL_LIST)
                 },
                 onOpenDoctorFeatureClick = {
                     navController.navigate(PetCareRoutes.DOCTOR_LIST)
+                },
+                onOpenFeedingFeatureClick = {
+                    navController.navigate(PetCareRoutes.FEEDING_LIST)
                 },
                 onOpenHealthFeatureClick = {
                     navController.navigate(PetCareRoutes.HEALTH_LIST)
@@ -186,6 +208,20 @@ fun PetCareNavGraph(
                     navController.navigate(PetCareRoutes.PET_LIST)
                 },
                 onLogoutClick = {
+                    authViewModel.logout()
+                    navController.navigate(PetCareRoutes.LOGIN) {
+                        popUpTo(PetCareRoutes.HOME) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(route = PetCareRoutes.PROFILE) {
+            ProfileScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onLogout = {
                     authViewModel.logout()
                     navController.navigate(PetCareRoutes.LOGIN) {
                         popUpTo(PetCareRoutes.HOME) { inclusive = true }
@@ -318,6 +354,61 @@ fun PetCareNavGraph(
                 onNavigateBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        // ===== FITUR 3: JADWAL MAKAN HARIAN (JEANETE) =====
+        composable(route = PetCareRoutes.FEEDING_LIST) {
+            FeedingListScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToAdd = {
+                    feedingViewModel.prepareForm(null)
+                    navController.navigate(PetCareRoutes.feedingFormRoute(null))
+                },
+                onNavigateToDetail = { feedingId ->
+                    navController.navigate(PetCareRoutes.feedingDetailRoute(feedingId))
+                },
+                viewModel = feedingViewModel
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.FEEDING_DETAIL,
+            arguments = listOf(
+                navArgument("feedingId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val feedingId = backStackEntry.arguments?.getString("feedingId").orEmpty()
+            FeedingDetailScreen(
+                id = feedingId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEdit = {
+                    feedingViewModel.prepareForm(feedingId)
+                    navController.navigate(PetCareRoutes.feedingFormRoute(feedingId))
+                },
+                viewModel = feedingViewModel
+            )
+        }
+
+        composable(
+            route = PetCareRoutes.FEEDING_FORM,
+            arguments = listOf(
+                navArgument("feedingId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
+            FeedingFormScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                viewModel = feedingViewModel
             )
         }
 
@@ -496,8 +587,10 @@ private data class ModulePreviewItem(
 @Composable
 private fun HomePlaceholderScreen(
     currentUser: UserProfile?,
+    onOpenProfileClick: () -> Unit,
     onOpenJadwalFeatureClick: () -> Unit,
     onOpenDoctorFeatureClick: () -> Unit,
+    onOpenFeedingFeatureClick: () -> Unit,
     onOpenHealthFeatureClick: () -> Unit,
     onOpenPetFeatureClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -525,7 +618,8 @@ private fun HomePlaceholderScreen(
             owner = "Jeanete Arthika Lorentz R.",
             description = "Jam makan, jenis & porsi",
             icon = Icons.Outlined.Restaurant,
-            useWarmAccent = false
+            useWarmAccent = false,
+            onClick = onOpenFeedingFeatureClick
         ),
         ModulePreviewItem(
             title = "Riwayat Kesehatan",
@@ -567,7 +661,10 @@ private fun HomePlaceholderScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.clickable(onClick = onOpenProfileClick),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
