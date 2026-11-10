@@ -1,15 +1,17 @@
 package com.example.petcare.data.repository
 
 import com.example.petcare.data.model.JadwalVaksin
-import com.example.petcare.data.remote.SupabaseConfig
-import com.example.petcare.data.remote.SupabaseRestClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class JadwalVaksinRepository(
-    private val restClient: SupabaseRestClient = SupabaseRestClient()
-) {
+/**
+ * Repository untuk mengelola data jadwal vaksin dan kontrol hewan peliharaan (Fitur 1 - Sabitha Marsyarira Nayla).
+ * Menggunakan penyimpanan data lokal in-memory (mock repository) dengan operasi CRUD lengkap.
+ */
+class JadwalVaksinRepository {
+
     companion object {
         private val localCache = mutableListOf(
             JadwalVaksin(
@@ -65,100 +67,48 @@ class JadwalVaksinRepository(
 
     suspend fun getJadwalList(userId: String? = null): Result<List<JadwalVaksin>> =
         withContext(Dispatchers.IO) {
-            try {
-                if (SupabaseConfig.isConfigured) {
-                    val remoteList = restClient.fetchJadwalList(userId)
-                    localCache.clear()
-                    localCache.addAll(remoteList)
-                    Result.success(remoteList)
-                } else {
-                    val filtered = if (!userId.isNullOrBlank()) {
-                        localCache.filter { it.userId == userId || it.userId == "user-demo-001" }
-                    } else {
-                        localCache.toList()
-                    }
-                    Result.success(filtered)
-                }
-            } catch (e: Exception) {
-                Result.success(localCache.toList())
+            delay(150)
+            val filtered = if (!userId.isNullOrBlank()) {
+                localCache.filter { it.userId == userId || it.userId == "user-demo-001" }
+            } else {
+                localCache.toList()
             }
+            Result.success(filtered)
         }
 
     suspend fun getJadwalById(id: String): Result<JadwalVaksin?> = withContext(Dispatchers.IO) {
-        try {
-            val cached = localCache.find { it.id == id }
-            Result.success(cached)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val cached = localCache.find { it.id == id }
+        Result.success(cached)
     }
 
     suspend fun insertJadwal(jadwal: JadwalVaksin): Result<JadwalVaksin> =
         withContext(Dispatchers.IO) {
-            try {
-                val prepared = if (jadwal.id.isBlank()) {
-                    jadwal.copy(id = UUID.randomUUID().toString())
-                } else {
-                    jadwal
-                }
-
-                if (SupabaseConfig.isConfigured) {
-                    try {
-                        val inserted = restClient.insertJadwal(prepared)
-                        localCache.removeAll { it.id == inserted.id }
-                        localCache.add(0, inserted)
-                        return@withContext Result.success(inserted)
-                    } catch (e: Exception) {
-                        localCache.add(0, prepared)
-                        return@withContext Result.success(prepared)
-                    }
-                } else {
-                    localCache.add(0, prepared)
-                    Result.success(prepared)
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
+            delay(150)
+            val prepared = if (jadwal.id.isBlank()) {
+                jadwal.copy(id = UUID.randomUUID().toString())
+            } else {
+                jadwal
             }
+            localCache.add(0, prepared)
+            Result.success(prepared)
         }
 
     suspend fun updateJadwal(jadwal: JadwalVaksin): Result<JadwalVaksin> =
         withContext(Dispatchers.IO) {
-            try {
-                val index = localCache.indexOfFirst { it.id == jadwal.id }
-                if (index != -1) {
-                    localCache[index] = jadwal
-                } else {
-                    localCache.add(jadwal)
-                }
-
-                if (SupabaseConfig.isConfigured) {
-                    try {
-                        val updated = restClient.updateJadwal(jadwal)
-                        Result.success(updated)
-                    } catch (e: Exception) {
-                        Result.success(jadwal)
-                    }
-                } else {
-                    Result.success(jadwal)
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
+            delay(150)
+            val index = localCache.indexOfFirst { it.id == jadwal.id }
+            if (index != -1) {
+                localCache[index] = jadwal
+            } else {
+                localCache.add(jadwal)
             }
+            Result.success(jadwal)
         }
 
     suspend fun deleteJadwal(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            localCache.removeAll { it.id == id }
-            if (SupabaseConfig.isConfigured) {
-                try {
-                    restClient.deleteJadwal(id)
-                } catch (_: Exception) {
-                }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        delay(100)
+        localCache.removeAll { it.id == id }
+        Result.success(Unit)
     }
 
     suspend fun toggleStatus(id: String): Result<JadwalVaksin> = withContext(Dispatchers.IO) {

@@ -87,7 +87,7 @@ fun JadwalVaksinDetailScreen(
             },
             text = {
                 Text(
-                    text = "Apakah Anda yakin ingin menghapus jadwal untuk '${jadwal.namaHewan}'? Tindakan ini akan menghapus data dari database.",
+                    text = "Apakah Anda yakin ingin menghapus jadwal untuk '${jadwal.namaHewan}'? Tindakan ini akan menghapus data jadwal ini.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
