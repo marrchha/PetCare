@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 class RiwayatKesehatanViewModel(
     private val repository: RiwayatKesehatanRepository = RiwayatKesehatanRepository()
@@ -47,7 +46,6 @@ class RiwayatKesehatanViewModel(
             _listUiState.update { it.copy(items = records, isLoading = false) }
         }.launchIn(viewModelScope)
     }
-
 
     private fun observeCounts() {
         repository.getRiwayatList(JenisRiwayatKesehatan.SEMUA, "").onEach { all ->
@@ -94,9 +92,8 @@ class RiwayatKesehatanViewModel(
         }
     }
 
-
     fun prepareFormForCreate() {
-        val todayStr = SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")).format(Date())
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         _formUiState.value = RiwayatKesehatanFormUiState(
             petName = "",
             petType = "Kucing",
@@ -114,7 +111,6 @@ class RiwayatKesehatanViewModel(
             isLoading = false
         )
     }
-
 
     fun prepareFormForEdit(id: String) {
         viewModelScope.launch {
@@ -148,7 +144,6 @@ class RiwayatKesehatanViewModel(
         }
     }
 
-    // Form input
     fun onPetNameChange(value: String) {
         _formUiState.update { it.copy(petName = value, validationError = null) }
     }
@@ -186,7 +181,6 @@ class RiwayatKesehatanViewModel(
         _formUiState.update { it.copy(statusPemulihan = value, validationError = null) }
     }
 
-
     fun saveForm(onSuccess: (savedId: String) -> Unit) {
         val state = _formUiState.value
         val petName = state.petName.trim()
@@ -195,7 +189,6 @@ class RiwayatKesehatanViewModel(
         val dokter = state.dokterAtauKlinik.trim()
         val catatan = state.catatanMedis.trim()
 
-        // Validasi input
         when {
             petName.isBlank() -> {
                 _formUiState.update { it.copy(validationError = "Nama hewan peliharaan wajib diisi.") }
@@ -206,11 +199,11 @@ class RiwayatKesehatanViewModel(
                 return
             }
             tanggal.isBlank() -> {
-                _formUiState.update { it.copy(validationError = "Tanggal pemeriksaan wajib diisi.") }
+                _formUiState.update { it.copy(validationError = "Tanggal pemeriksaan wajib dipilih.") }
                 return
             }
             dokter.isBlank() -> {
-                _formUiState.update { it.copy(validationError = "Nama dokter atau klinik wajib diisi.") }
+                _formUiState.update { it.copy(validationError = "Nama dokter atau klinik wajib dipilih/diisi.") }
                 return
             }
             catatan.isBlank() -> {
@@ -238,8 +231,9 @@ class RiwayatKesehatanViewModel(
                     statusPemulihan = state.statusPemulihan
                 )
             } else {
+                // ID berurutan (med-001, med-002, dst.) dibuat otomatis oleh Repository
                 RiwayatKesehatan(
-                    id = UUID.randomUUID().toString(),
+                    id = "",
                     petName = petName,
                     petType = state.petType,
                     jenis = state.jenis,
@@ -261,7 +255,6 @@ class RiwayatKesehatanViewModel(
             result.fold(
                 onSuccess = { savedItem ->
                     _formUiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    // Update juga detail state jika sedang membuka detail record ini
                     _detailUiState.update { it.copy(record = savedItem) }
                     onSuccess(savedItem.id)
                 },
@@ -277,9 +270,6 @@ class RiwayatKesehatanViewModel(
         }
     }
 
-    /**
-     * Menghapus catatan riwayat kesehatan (DELETE).
-     */
     fun deleteRecord(id: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _detailUiState.update { it.copy(isDeleting = true, errorMessage = null) }

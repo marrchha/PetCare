@@ -3,17 +3,25 @@ package com.example.petcare.data.repository
 import android.content.Context
 import android.net.Uri
 import com.example.petcare.data.model.Pet
+import com.example.petcare.data.remote.SequentialIdGenerator
 import com.example.petcare.data.remote.SupabaseConfig
 import com.example.petcare.data.remote.SupabaseRestClient
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.util.UUID
 
 class PetRepository {
 
     companion object {
         private const val TABLE_PETS = "pets"
+        private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private var hasFetchedInitial = false
 
         private val petStorage = mutableListOf(
             Pet(
@@ -37,7 +45,7 @@ class PetRepository {
                 gender = "Jantan",
                 ageMonths = 24,
                 weightKg = 26.5,
-                color = "Kemasannya Keemasan (Golden)",
+                color = "Keemasan (Golden)",
                 photoUri = null,
                 notes = "Aktif bermain lempar bola setiap sore. Sudah vaksin rabies lengkap.",
                 accentIndex = 1
@@ -69,6 +77,18 @@ class PetRepository {
                 accentIndex = 0
             )
         )
+
+        private val _petsFlow = MutableStateFlow<List<Pet>>(petStorage.toList())
+        val petsFlow: StateFlow<List<Pet>> = _petsFlow.asStateFlow()
+    }
+
+    init {
+        if (!hasFetchedInitial && SupabaseConfig.isConfigured) {
+            hasFetchedInitial = true
+            repoScope.launch {
+                fetchAllPets()
+            }
+        }
     }
 
     fun getAllPets(): List<Pet> {
@@ -79,18 +99,15 @@ class PetRepository {
         return petStorage.find { it.id == petId }
     }
 
-    /**
-     * READ dari Supabase: Mengambil semua data hewan dari tabel `pets`.
-     * Jika tabel di Supabase masih kosong, otomatis melakukan seed data awal.
-     */
     suspend fun fetchAllPets(): Result<List<Pet>> = withContext(Dispatchers.IO) {
         if (!SupabaseConfig.isConfigured) {
+            _petsFlow.value = petStorage.toList()
             return@withContext Result.success(petStorage.toList())
         }
 
         val response = SupabaseRestClient.getList(
             table = TABLE_PETS,
-            queryParams = "select=*&order=created_at.desc"
+            queryParams = "select=*&order=id.asc"
         )
 
         response.fold(
@@ -99,6 +116,7 @@ class PetRepository {
                     petStorage.forEach { seedPet ->
                         SupabaseRestClient.insert(TABLE_PETS, petToJson(seedPet))
                     }
+                    _petsFlow.value = petStorage.toList()
                     Result.success(petStorage.toList())
                 } else {
                     val loaded = mutableListOf<Pet>()
@@ -106,21 +124,21 @@ class PetRepository {
                         val obj = jsonArray.getJSONObject(i)
                         loaded.add(jsonToPet(obj, i))
                     }
+                    loaded.sortBy { it.id }
                     petStorage.clear()
                     petStorage.addAll(loaded)
+                    _petsFlow.value = petStorage.toList()
                     Result.success(petStorage.toList())
                 }
             },
             onFailure = {
+                _petsFlow.value = petStorage.toList()
                 Result.success(petStorage.toList())
             }
         )
     }
 
-    /**
-     * UPLOAD GAMBAR ke Supabase Storage (`petcare-media/pets/pet_{id}.jpg`).
-     * Mengembalikan URL publik gambar dari Supabase Storage.
-     */
+
     suspend fun uploadPetPhotoIfNeeded(
         context: Context,
         petId: String,
@@ -150,9 +168,6 @@ class PetRepository {
         }.getOrDefault(photoUri)
     }
 
-    /**
-     * INSERT ke tabel `pets` di Supabase.
-     */
     suspend fun insertPetRemote(
         context: Context,
         name: String,
@@ -165,7 +180,11 @@ class PetRepository {
         photoUri: String?,
         notes: String
     ): Result<Pet> = withContext(Dispatchers.IO) {
-        val newId = "pet-${UUID.randomUUID().toString().take(8)}"
+        val newId = SequentialIdGenerator.nextId(
+            table = TABLE_PETS,
+            prefix = "pet",
+            localIds = petStorage.map { it.id }
+        )
         val finalPhotoUrl = uploadPetPhotoIfNeeded(context, newId, photoUri)
         val newPet = Pet(
             id = newId,
@@ -191,13 +210,12 @@ class PetRepository {
         }
 
         petStorage.removeAll { it.id == newPet.id }
-        petStorage.add(0, newPet)
+        petStorage.add(newPet)
+        petStorage.sortBy { it.id }
+        _petsFlow.value = petStorage.toList()
         Result.success(newPet)
     }
 
-    /**
-     * UPDATE ke tabel `pets` di Supabase.
-     */
     suspend fun updatePetRemote(
         context: Context,
         updatedPet: Pet
@@ -220,14 +238,13 @@ class PetRepository {
         if (index != -1) {
             petStorage[index] = finalPet
         } else {
-            petStorage.add(0, finalPet)
+            petStorage.add(finalPet)
         }
+        petStorage.sortBy { it.id }
+        _petsFlow.value = petStorage.toList()
         Result.success(finalPet)
     }
 
-    /**
-     * DELETE dari tabel `pets` di Supabase.
-     */
     suspend fun deletePetRemote(petId: String): Result<Boolean> = withContext(Dispatchers.IO) {
         if (SupabaseConfig.isConfigured) {
             val encodedId = SupabaseRestClient.encodeParam(petId)
@@ -239,6 +256,7 @@ class PetRepository {
             }
         }
         val removed = petStorage.removeAll { it.id == petId }
+        _petsFlow.value = petStorage.toList()
         Result.success(removed)
     }
 
@@ -261,7 +279,7 @@ class PetRepository {
     private fun jsonToPet(obj: JSONObject, indexFallback: Int): Pet {
         val rawPhoto = obj.optString("photo_uri", "")
         return Pet(
-            id = obj.optString("id", "pet-${UUID.randomUUID().toString().take(8)}"),
+            id = obj.optString("id", String.format("pet-%03d", indexFallback + 1)),
             name = obj.optString("name", ""),
             species = obj.optString("species", "Kucing"),
             breed = obj.optString("breed", ""),

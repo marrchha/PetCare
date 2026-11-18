@@ -1,13 +1,13 @@
 package com.example.petcare.data.repository
 
 import com.example.petcare.data.model.UserProfile
+import com.example.petcare.data.remote.SequentialIdGenerator
 import com.example.petcare.data.remote.SupabaseConfig
 import com.example.petcare.data.remote.SupabaseRestClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
-import java.util.UUID
 
 class AuthRepository {
 
@@ -22,7 +22,7 @@ class AuthRepository {
         private val registeredAccounts = mutableListOf(
             AccountRecord(
                 profile = UserProfile(
-                    id = "user-demo-001",
+                    id = "user-001",
                     fullName = "Tim PetCare",
                     email = "demo@petcare.com",
                     phoneNumber = "081234567890"
@@ -126,8 +126,14 @@ class AuthRepository {
             }
         }
 
+        val nextUserId = SequentialIdGenerator.nextId(
+            table = TABLE_USERS,
+            prefix = "user",
+            localIds = registeredAccounts.map { it.profile.id }
+        )
+
         val newProfile = UserProfile(
-            id = "user-${UUID.randomUUID().toString().take(8)}",
+            id = nextUserId,
             fullName = fullName.trim(),
             email = normalizedEmail,
             phoneNumber = phoneNumber.trim()
@@ -226,7 +232,7 @@ class AuthRepository {
     private fun jsonToUserProfile(obj: JSONObject): UserProfile {
         val rawAvatar = obj.optString("avatar_url", "")
         return UserProfile(
-            id = obj.optString("id", UUID.randomUUID().toString()),
+            id = obj.optString("id", "user-001"),
             fullName = obj.optString("full_name", "Pengguna PetCare"),
             email = obj.optString("email", ""),
             phoneNumber = obj.optString("phone_number", ""),

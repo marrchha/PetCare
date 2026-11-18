@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class JadwalVaksinUiState(
     val isLoading: Boolean = false,
@@ -36,9 +35,9 @@ data class JadwalVaksinUiState(
         return schedules.filter { item ->
             val matchStatus = item.status.equals(forStatus, ignoreCase = true)
             val matchQuery = query.isEmpty() ||
-                    item.namaHewan.lowercase().contains(query) ||
-                    item.keperluan.lowercase().contains(query) ||
-                    item.klinik.lowercase().contains(query)
+                item.namaHewan.lowercase().contains(query) ||
+                item.keperluan.lowercase().contains(query) ||
+                item.klinik.lowercase().contains(query)
             matchStatus && matchQuery
         }
     }
@@ -103,7 +102,6 @@ class JadwalVaksinViewModel(
     fun clearMessage() {
         _uiState.update { it.copy(userMessage = null, errorMessage = null) }
     }
-
 
     fun initFormForAdd() {
         _uiState.update {
@@ -196,19 +194,19 @@ class JadwalVaksinViewModel(
             return
         }
         if (klinik.isBlank()) {
-            _uiState.update { it.copy(formValidationMessage = "Nama klinik dokter hewan wajib diisi.") }
+            _uiState.update { it.copy(formValidationMessage = "Nama klinik atau dokter hewan wajib diisi.") }
             return
         }
 
-        val effectiveUserId = if (!currentUserId.isNullOrBlank()) currentUserId else "user-demo-001"
+        val effectiveUserId = if (!currentUserId.isNullOrBlank()) currentUserId else "user-001"
 
         viewModelScope.launch {
             _uiState.update { it.copy(formIsSubmitting = true, formValidationMessage = null) }
 
             if (state.formId == null) {
-                // INSERT (Tambah Jadwal Baru)
+                // INSERT (ID berurutan jv-001, jv-002, dst. dibuat otomatis di Repository)
                 val newJadwal = JadwalVaksin(
-                    id = UUID.randomUUID().toString(),
+                    id = "",
                     userId = effectiveUserId,
                     namaHewan = namaHewan,
                     jenis = state.formJenis,
@@ -223,11 +221,12 @@ class JadwalVaksinViewModel(
                 result.fold(
                     onSuccess = { inserted ->
                         _uiState.update { current ->
-                            val updatedList = listOf(inserted) + current.schedules.filterNot { it.id == inserted.id }
+                            val updatedList = (current.schedules.filterNot { it.id == inserted.id } + inserted)
+                                .sortedBy { it.id }
                             current.copy(
                                 formIsSubmitting = false,
                                 schedules = updatedList,
-                                userMessage = "Jadwal ${inserted.jenis.lowercase()} berhasil ditambahkan!"
+                                userMessage = "Jadwal ${inserted.jenis.lowercase()} (${inserted.id}) berhasil ditambahkan!"
                             )
                         }
                         onSuccess()
@@ -280,7 +279,6 @@ class JadwalVaksinViewModel(
             }
         }
     }
-
 
     fun toggleScheduleStatus(id: String) {
         viewModelScope.launch {

@@ -1,7 +1,6 @@
 package com.example.petcare.ui.jadwal
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -125,7 +124,7 @@ fun JadwalVaksinDetailScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ===== TOP BAR =====
+            // ===== TOP BAR (Hanya Tombol Kembali & Tombol Hapus, Tanpa Tombol Edit Redundan) =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,38 +155,20 @@ fun JadwalVaksinDetailScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Tombol Edit
-                    IconButton(
-                        onClick = { onNavigateToEdit(jadwal) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = "Edit Jadwal",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    // Tombol Hapus
-                    IconButton(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.errorContainer)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.DeleteOutline,
-                            contentDescription = "Hapus Jadwal",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                // Hanya Tombol Hapus di Kanan Atas (Tombol Edit sudah ada di bagian bawah)
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteOutline,
+                        contentDescription = "Hapus Jadwal",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 
@@ -287,8 +268,8 @@ fun JadwalVaksinDetailScreen(
 
                 DetailInfoRow(
                     icon = Icons.Outlined.Info,
-                    label = "Jenis Jadwal",
-                    value = jadwal.jenis
+                    label = "ID & Jenis Jadwal",
+                    value = "${jadwal.id} • ${jadwal.jenis}"
                 )
 
                 DetailInfoRow(

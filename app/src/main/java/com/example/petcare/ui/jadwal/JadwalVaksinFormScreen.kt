@@ -5,8 +5,9 @@ import android.app.TimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,13 @@ import androidx.compose.material.icons.outlined.Vaccines
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,17 +49,24 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.petcare.data.model.JadwalVaksin
+import com.example.petcare.data.repository.DoctorClinicRepository
+import com.example.petcare.data.repository.PetRepository
 import java.util.Calendar
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun JadwalVaksinFormScreen(
     uiState: JadwalVaksinUiState,
@@ -70,6 +85,13 @@ fun JadwalVaksinFormScreen(
     val isEditMode = uiState.formId != null
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
+
+    // Relasi dengan Fitur 5 (Daftar Hewan) & Fitur 2 (Daftar Dokter & Klinik)
+    val registeredPets by PetRepository.petsFlow.collectAsState()
+    val registeredDoctors by DoctorClinicRepository.sharedDoctorsFlow.collectAsState()
+
+    var petDropdownExpanded by remember { mutableStateOf(false) }
+    var doctorDropdownExpanded by remember { mutableStateOf(false) }
 
     val datePickerDialog = DatePickerDialog(
         context,
@@ -127,7 +149,7 @@ fun JadwalVaksinFormScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (isEditMode) "Perbarui Data" else "Buat Jadwal Baru",
+                        text = if (isEditMode) "Perbarui Data (${uiState.formId})" else "Buat Jadwal Baru",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -216,30 +238,97 @@ fun JadwalVaksinFormScreen(
                     }
                 }
 
-                Text(
-                    text = "Nama Hewan Peliharaan",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                OutlinedTextField(
-                    value = uiState.formNamaHewan,
-                    onValueChange = onNamaHewanChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Contoh: Mimi, Rocky, atau Chiki") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Pets,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                // Relasi ke Fitur 5: Pilih Hewan Peliharaan dari Data Profil Hewan
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Nama Hewan Peliharaan (Dari Data Profil Hewan)",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                )
+                    ExposedDropdownMenuBox(
+                        expanded = petDropdownExpanded,
+                        onExpandedChange = { petDropdownExpanded = !petDropdownExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.formNamaHewan,
+                            onValueChange = onNamaHewanChange,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                            placeholder = { Text("Pilih hewan terdaftar atau ketik nama...") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Pets,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = petDropdownExpanded)
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
+
+                        if (registeredPets.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = petDropdownExpanded,
+                                onDismissRequest = { petDropdownExpanded = false }
+                            ) {
+                                registeredPets.forEach { pet ->
+                                    val formattedPet = "${pet.name} (${pet.species})"
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    text = formattedPet,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                                Text(
+                                                    text = "${pet.id} • Ras ${pet.breed}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            onNamaHewanChange(formattedPet)
+                                            petDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (registeredPets.isNotEmpty()) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            registeredPets.forEach { pet ->
+                                val label = "${pet.name} (${pet.species})"
+                                val selected = uiState.formNamaHewan.equals(label, ignoreCase = true)
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { onNamaHewanChange(label) },
+                                    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                    shape = RoundedCornerShape(50),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Text(
                     text = if (uiState.formJenis == JadwalVaksin.JENIS_VAKSIN) "Nama Vaksin" else "Keperluan Kontrol",
@@ -346,30 +435,74 @@ fun JadwalVaksinFormScreen(
                     }
                 }
 
-                Text(
-                    text = "Klinik / Rumah Sakit Hewan",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                OutlinedTextField(
-                    value = uiState.formKlinik,
-                    onValueChange = onKlinikChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Contoh: Klinik Satwa Husada Sehat") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.LocalHospital,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                // Relasi ke Fitur 2: Pilih Dokter & Klinik dari Manajemen Dokter & Klinik
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Dokter & Klinik Tujuan (Dari Fitur Dokter & Klinik)",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                )
+                    ExposedDropdownMenuBox(
+                        expanded = doctorDropdownExpanded,
+                        onExpandedChange = { doctorDropdownExpanded = !doctorDropdownExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.formKlinik,
+                            onValueChange = onKlinikChange,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                            placeholder = { Text("Pilih dokter & klinik terdaftar...") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.LocalHospital,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = doctorDropdownExpanded)
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
+
+                        if (registeredDoctors.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = doctorDropdownExpanded,
+                                onDismissRequest = { doctorDropdownExpanded = false }
+                            ) {
+                                registeredDoctors.forEach { doc ->
+                                    val formattedDocClinic = "${doc.name} - ${doc.clinicName}"
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    text = formattedDocClinic,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                                Text(
+                                                    text = "${doc.id} • ${doc.specialization} (${doc.practiceDays})",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            onKlinikChange(formattedDocClinic)
+                                            doctorDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Text(
                     text = "Catatan Tambahan (Opsional)",

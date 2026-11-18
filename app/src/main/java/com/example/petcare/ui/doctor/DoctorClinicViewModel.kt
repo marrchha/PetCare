@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class DoctorClinicUiState(
     val isLoading: Boolean = false,
@@ -358,31 +357,15 @@ class DoctorClinicViewModel(
     // ALIAS METHODS — kompatibilitas DoctorClinicListScreen
     // ==========================================
 
-    /** Alias untuk onTabChange — digunakan oleh DoctorClinicListScreen */
     fun onTabSelected(tabIndex: Int) = onTabChange(tabIndex)
-
-    /** Alias untuk closeDoctorFilterSheet */
     fun dismissDoctorFilterSheet() = closeDoctorFilterSheet()
-
-    /** Alias untuk onTempDoctorClinicChange */
     fun onTempDoctorClinicFilterChange(clinicId: String) = onTempDoctorClinicChange(clinicId)
-
-    /** Alias untuk onTempDoctorSpecializationChange */
     fun onTempDoctorSpecFilterChange(spec: String) = onTempDoctorSpecializationChange(spec)
-
-    /** Alias untuk onTempDoctorStatusChange */
     fun onTempDoctorStatusFilterChange(status: String) = onTempDoctorStatusChange(status)
-
-    /** Alias untuk onTempDoctorDayChange */
     fun onTempDoctorDayFilterChange(day: String) = onTempDoctorDayChange(day)
-
-    /** Alias untuk resetDoctorFilter */
     fun resetDoctorFilters() = resetDoctorFilter()
-
-    /** Alias untuk applyDoctorFilter */
     fun applyDoctorFilters() = applyDoctorFilter()
 
-    /** Alias deleteDoctor tanpa onSuccess callback (untuk DoctorClinicListScreen) */
     fun deleteDoctor(doctorId: String) {
         deleteDoctor(doctorId, onSuccess = {})
     }
@@ -392,7 +375,7 @@ class DoctorClinicViewModel(
     }
 
     // ==========================================
-    // CRUD DOKTER
+    // CRUD DOKTER (ID berurutan doc-001, doc-002, dst.)
     // ==========================================
 
     fun loadDoctorDetail(doctorId: String) {
@@ -433,7 +416,7 @@ class DoctorClinicViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val resolvedClinic = _uiState.value.clinics.find { it.id == clinicId }
             val doctor = Doctor(
-                id = id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                id = id?.takeIf { it.isNotBlank() }.orEmpty(),
                 name = name.trim(),
                 specialization = specialization.trim(),
                 practiceDays = practiceDays.trim().ifBlank { "Senin, Rabu, Jumat" },
@@ -460,7 +443,7 @@ class DoctorClinicViewModel(
                         it.copy(
                             isLoading = false,
                             selectedDoctor = savedDoc,
-                            userMessage = "Data ${savedDoc.name} berhasil disimpan."
+                            userMessage = "Data ${savedDoc.name} (${savedDoc.id}) berhasil disimpan."
                         )
                     }
                     onSuccess()
@@ -527,7 +510,7 @@ class DoctorClinicViewModel(
     }
 
     // ==========================================
-    // CRUD LAYANAN KLINIK
+    // CRUD LAYANAN KLINIK (ID berurutan srv-001, srv-002, dst.)
     // ==========================================
 
     fun saveService(
@@ -549,7 +532,7 @@ class DoctorClinicViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val service = ClinicService(
-                id = id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                id = id?.takeIf { it.isNotBlank() }.orEmpty(),
                 clinicId = clinicId,
                 name = name.trim(),
                 category = category.trim().ifBlank { "Pemeriksaan" },
@@ -570,7 +553,7 @@ class DoctorClinicViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            userMessage = "Layanan ${saved.name} berhasil disimpan."
+                            userMessage = "Layanan ${saved.name} (${saved.id}) berhasil disimpan."
                         )
                     }
                     onSuccess()
@@ -602,7 +585,7 @@ class DoctorClinicViewModel(
     }
 
     // ==========================================
-    // CRUD MULTI-KLINIK
+    // CRUD MULTI-KLINIK (ID berurutan clinic-001, clinic-002, dst.)
     // ==========================================
 
     fun saveClinic(
@@ -624,7 +607,7 @@ class DoctorClinicViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val clinic = ClinicInfo(
-                id = id?.takeIf { it.isNotBlank() } ?: "clinic-${UUID.randomUUID().toString().take(8)}",
+                id = id?.takeIf { it.isNotBlank() }.orEmpty(),
                 name = name.trim(),
                 address = address.trim(),
                 phoneNumber = phone.trim(),
@@ -641,12 +624,12 @@ class DoctorClinicViewModel(
             }
 
             result.fold(
-                onSuccess = {
+                onSuccess = { savedClinic ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            selectedClinicDetailId = clinic.id,
-                            userMessage = "Data klinik ${clinic.name} berhasil disimpan."
+                            selectedClinicDetailId = savedClinic.id,
+                            userMessage = "Data klinik ${savedClinic.name} (${savedClinic.id}) berhasil disimpan."
                         )
                     }
                     onSuccess()

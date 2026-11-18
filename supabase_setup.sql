@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- 2. TABEL JADWAL VAKSIN (Fitur 1 - Sabitha)
 CREATE TABLE IF NOT EXISTS public.jadwal_vaksin (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL DEFAULT 'user-demo-001',
+    user_id TEXT NOT NULL DEFAULT 'user-001',
     nama_hewan TEXT NOT NULL,
     jenis TEXT NOT NULL DEFAULT 'Vaksin',
     keperluan TEXT NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.dokter (
     practice_hours TEXT NOT NULL,
     phone_contact TEXT NOT NULL,
     clinic_id TEXT NOT NULL DEFAULT 'clinic-001',
-    clinic_name TEXT NOT NULL DEFAULT 'PetCare Central Vet',
+    clinic_name TEXT NOT NULL DEFAULT 'Petcare Malang',
     photo_uri TEXT,
     avatar_index INT NOT NULL DEFAULT 1,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS public.layanan_klinik (
     description TEXT NOT NULL DEFAULT '',
     estimated_price BIGINT NOT NULL DEFAULT 0,
     duration_minutes INT NOT NULL DEFAULT 15,
-    category TEXT NOT NULL DEFAULT 'Umum'
+    category TEXT NOT NULL DEFAULT 'Pemeriksaan'
 );
 
 -- 4. TABEL JADWAL MAKAN (Fitur 3 - Jeanete)
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.feeding_schedules (
 -- 5. TABEL RIWAYAT KESEHATAN (Fitur 4 - Givenia)
 CREATE TABLE IF NOT EXISTS public.riwayat_kesehatan (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL DEFAULT 'user-demo-001',
+    user_id TEXT NOT NULL DEFAULT 'user-001',
     pet_name TEXT NOT NULL,
     pet_type TEXT NOT NULL DEFAULT 'Kucing',
     jenis TEXT NOT NULL DEFAULT 'SAKIT',
@@ -126,3 +126,8 @@ CREATE POLICY "Public Access petcare-media"
 ON storage.objects FOR ALL
 USING (bucket_id = 'petcare-media')
 WITH CHECK (bucket_id = 'petcare-media');
+
+-- 9. OPSIONAL: RESET DATA LAMA YANG ID-NYA MASIH RANDOM UUID
+-- Jalankan perintah di bawah ini jika ingin membersihkan data lama yang ID-nya random,
+-- supaya saat aplikasi dijalankan ulang semua tabel otomatis terisi ulang dengan ID berurutan:
+-- TRUNCATE TABLE public.jadwal_vaksin, public.klinik_info, public.dokter, public.layanan_klinik, public.feeding_schedules, public.riwayat_kesehatan, public.pets;

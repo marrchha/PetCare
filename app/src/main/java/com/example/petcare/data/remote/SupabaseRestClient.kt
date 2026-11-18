@@ -13,10 +13,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/**
- * Client resmi untuk berkomunikasi dengan Supabase PostgREST (/rest/v1)
- * dan Supabase Storage (/storage/v1) menggunakan Kotlin Coroutines (Dispatchers.IO).
- */
 object SupabaseRestClient {
 
     private val bitmapCache = object : LruCache<String, Bitmap>(20 * 1024 * 1024) {
@@ -25,10 +21,6 @@ object SupabaseRestClient {
 
     fun encodeParam(value: String): String = URLEncoder.encode(value, "UTF-8")
 
-    /**
-     * READ (GET): Mengambil daftar baris dari tabel Supabase.
-     * Contoh queryParams: "select=*&order=created_at.desc"
-     */
     suspend fun getList(
         table: String,
         queryParams: String = "select=*"
@@ -58,9 +50,6 @@ object SupabaseRestClient {
         }
     }
 
-    /**
-     * INSERT / UPSERT (POST): Menambahkan baris baru ke tabel Supabase.
-     */
     suspend fun insert(
         table: String,
         payload: JSONObject,
@@ -103,9 +92,6 @@ object SupabaseRestClient {
         }
     }
 
-    /**
-     * UPDATE (PATCH): Memperbarui baris pada tabel Supabase berdasarkan filter (contoh: "id=eq.pet-001").
-     */
     suspend fun update(
         table: String,
         matchQuery: String,
@@ -143,9 +129,6 @@ object SupabaseRestClient {
         }
     }
 
-    /**
-     * DELETE: Menghapus baris pada tabel Supabase berdasarkan filter (contoh: "id=eq.pet-001").
-     */
     suspend fun delete(
         table: String,
         matchQuery: String
@@ -174,10 +157,6 @@ object SupabaseRestClient {
         }
     }
 
-    /**
-     * STORAGE UPLOAD: Mengunggah gambar (ByteArray) ke bucket Supabase Storage `petcare-media`
-     * dan mengembalikan URL publik gambar tersebut.
-     */
     suspend fun uploadImage(
         objectPath: String,
         bytes: ByteArray,
@@ -215,9 +194,6 @@ object SupabaseRestClient {
         }
     }
 
-    /**
-     * STORAGE READ: Mengunduh Bitmap dari URL publik Supabase Storage (dengan LruCache di memori).
-     */
     suspend fun downloadBitmap(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
         bitmapCache.get(imageUrl)?.let { return@withContext it }
         runCatching {

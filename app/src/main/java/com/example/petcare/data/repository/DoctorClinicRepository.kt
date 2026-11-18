@@ -3,6 +3,7 @@ package com.example.petcare.data.repository
 import com.example.petcare.data.model.ClinicInfo
 import com.example.petcare.data.model.ClinicService
 import com.example.petcare.data.model.Doctor
+import com.example.petcare.data.remote.SequentialIdGenerator
 import com.example.petcare.data.remote.SupabaseConfig
 import com.example.petcare.data.remote.SupabaseRestClient
 import kotlinx.coroutines.CoroutineScope
@@ -13,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.util.UUID
 
 class DoctorClinicRepository {
 
@@ -239,6 +239,9 @@ class DoctorClinicRepository {
         private val _selectedClinicIdFlow = MutableStateFlow<String>(initialClinics.first().id)
         private val _doctorsFlow = MutableStateFlow<List<Doctor>>(initialDoctors.toList())
         private val _servicesFlow = MutableStateFlow<List<ClinicService>>(initialServices.toList())
+
+        val sharedClinicsFlow: StateFlow<List<ClinicInfo>> = _clinicsFlow.asStateFlow()
+        val sharedDoctorsFlow: StateFlow<List<Doctor>> = _doctorsFlow.asStateFlow()
     }
 
     val clinicsFlow: StateFlow<List<ClinicInfo>> = _clinicsFlow.asStateFlow()
@@ -272,17 +275,18 @@ class DoctorClinicRepository {
             SupabaseRestClient.insert(TABLE_SERVICES, serviceToJson(srv))
         }
 
-        SupabaseRestClient.getList(TABLE_CLINICS, "select=*").onSuccess { arr ->
+        SupabaseRestClient.getList(TABLE_CLINICS, "select=*&order=id.asc").onSuccess { arr ->
             if (arr.length() > 0) {
                 val loaded = mutableListOf<ClinicInfo>()
                 for (i in 0 until arr.length()) {
                     val obj = arr.getJSONObject(i)
                     val id = obj.optString("id", "")
                     if (id.isNotBlank() && loaded.none { it.id == id }) {
-                        loaded.add(jsonToClinic(obj))
+                        loaded.add(jsonToClinic(obj, i))
                     }
                 }
                 if (loaded.isNotEmpty()) {
+                    loaded.sortBy { it.id }
                     initialClinics.clear()
                     initialClinics.addAll(loaded)
                     _clinicsFlow.value = initialClinics.toList()
@@ -290,13 +294,14 @@ class DoctorClinicRepository {
             }
         }
 
-        SupabaseRestClient.getList(TABLE_DOCTORS, "select=*").onSuccess { arr ->
+        SupabaseRestClient.getList(TABLE_DOCTORS, "select=*&order=id.asc").onSuccess { arr ->
             if (arr.length() > 0) {
                 val loaded = mutableListOf<Doctor>()
                 for (i in 0 until arr.length()) {
-                    loaded.add(jsonToDoctor(arr.getJSONObject(i)))
+                    loaded.add(jsonToDoctor(arr.getJSONObject(i), i))
                 }
                 if (loaded.isNotEmpty()) {
+                    loaded.sortBy { it.id }
                     initialDoctors.clear()
                     initialDoctors.addAll(loaded)
                     _doctorsFlow.value = initialDoctors.toList()
@@ -304,13 +309,14 @@ class DoctorClinicRepository {
             }
         }
 
-        SupabaseRestClient.getList(TABLE_SERVICES, "select=*").onSuccess { arr ->
+        SupabaseRestClient.getList(TABLE_SERVICES, "select=*&order=id.asc").onSuccess { arr ->
             if (arr.length() > 0) {
                 val loaded = mutableListOf<ClinicService>()
                 for (i in 0 until arr.length()) {
                     loaded.add(jsonToService(arr.getJSONObject(i), i))
                 }
                 if (loaded.isNotEmpty()) {
+                    loaded.sortBy { it.id }
                     initialServices.clear()
                     initialServices.addAll(loaded)
                     _servicesFlow.value = initialServices.toList()
@@ -329,12 +335,22 @@ class DoctorClinicRepository {
 
     suspend fun addDoctor(doctor: Doctor): Result<Doctor> {
         return try {
-            val newDoctor = if (doctor.id.isBlank()) doctor.copy(id = UUID.randomUUID().toString()) else doctor
+            val sequentialId = if (doctor.id.isBlank() || !doctor.id.startsWith("doc-")) {
+                SequentialIdGenerator.nextId(
+                    table = TABLE_DOCTORS,
+                    prefix = "doc",
+                    localIds = initialDoctors.map { it.id }
+                )
+            } else {
+                doctor.id
+            }
+            val newDoctor = doctor.copy(id = sequentialId)
             if (SupabaseConfig.isConfigured) {
                 SupabaseRestClient.insert(TABLE_DOCTORS, doctorToJson(newDoctor))
             }
             initialDoctors.removeAll { it.id == newDoctor.id }
-            initialDoctors.add(0, newDoctor)
+            initialDoctors.add(newDoctor)
+            initialDoctors.sortBy { it.id }
             _doctorsFlow.value = initialDoctors.toList()
             Result.success(newDoctor)
         } catch (e: Exception) {
@@ -352,8 +368,9 @@ class DoctorClinicRepository {
             if (index != -1) {
                 initialDoctors[index] = doctor
             } else {
-                initialDoctors.add(0, doctor)
+                initialDoctors.add(doctor)
             }
+            initialDoctors.sortBy { it.id }
             _doctorsFlow.value = initialDoctors.toList()
             Result.success(doctor)
         } catch (e: Exception) {
@@ -388,12 +405,22 @@ class DoctorClinicRepository {
 
     suspend fun addService(service: ClinicService): Result<ClinicService> {
         return try {
-            val newService = if (service.id.isBlank()) service.copy(id = UUID.randomUUID().toString()) else service
+            val sequentialId = if (service.id.isBlank() || !service.id.startsWith("srv-")) {
+                SequentialIdGenerator.nextId(
+                    table = TABLE_SERVICES,
+                    prefix = "srv",
+                    localIds = initialServices.map { it.id }
+                )
+            } else {
+                service.id
+            }
+            val newService = service.copy(id = sequentialId)
             if (SupabaseConfig.isConfigured) {
                 SupabaseRestClient.insert(TABLE_SERVICES, serviceToJson(newService))
             }
             initialServices.removeAll { it.id == newService.id }
-            initialServices.add(0, newService)
+            initialServices.add(newService)
+            initialServices.sortBy { it.id }
             _servicesFlow.value = initialServices.toList()
             Result.success(newService)
         } catch (e: Exception) {
@@ -411,8 +438,9 @@ class DoctorClinicRepository {
             if (index != -1) {
                 initialServices[index] = service
             } else {
-                initialServices.add(0, service)
+                initialServices.add(service)
             }
+            initialServices.sortBy { it.id }
             _servicesFlow.value = initialServices.toList()
             Result.success(service)
         } catch (e: Exception) {
@@ -444,12 +472,22 @@ class DoctorClinicRepository {
 
     suspend fun addClinic(clinic: ClinicInfo): Result<ClinicInfo> {
         return try {
-            val newClinic = if (clinic.id.isBlank()) clinic.copy(id = UUID.randomUUID().toString()) else clinic
+            val sequentialId = if (clinic.id.isBlank() || !Regex("^clinic-\\d+$").matches(clinic.id)) {
+                SequentialIdGenerator.nextId(
+                    table = TABLE_CLINICS,
+                    prefix = "clinic",
+                    localIds = initialClinics.map { it.id }
+                )
+            } else {
+                clinic.id
+            }
+            val newClinic = clinic.copy(id = sequentialId)
             if (SupabaseConfig.isConfigured) {
                 SupabaseRestClient.insert(TABLE_CLINICS, clinicToJson(newClinic))
             }
             initialClinics.removeAll { it.id == newClinic.id }
             initialClinics.add(newClinic)
+            initialClinics.sortBy { it.id }
             _clinicsFlow.value = initialClinics.toList()
             _selectedClinicIdFlow.value = newClinic.id
             Result.success(newClinic)
@@ -470,6 +508,7 @@ class DoctorClinicRepository {
             } else {
                 initialClinics.add(info)
             }
+            initialClinics.sortBy { it.id }
             _clinicsFlow.value = initialClinics.toList()
             // Update nama klinik pada dokter yang terdaftar di klinik ini
             val updatedDocs = initialDoctors.map { doc ->
@@ -514,8 +553,8 @@ class DoctorClinicRepository {
         put("description", c.description)
     }
 
-    private fun jsonToClinic(obj: JSONObject): ClinicInfo {
-        val id = obj.optString("id", UUID.randomUUID().toString())
+    private fun jsonToClinic(obj: JSONObject, indexFallback: Int): ClinicInfo {
+        val id = obj.optString("id", String.format("clinic-%03d", indexFallback + 1))
         val emergency = obj.optBoolean("emergency_available", true)
         return ClinicInfo(
             id = id,
@@ -545,8 +584,8 @@ class DoctorClinicRepository {
         put("notes", d.notes)
     }
 
-    private fun jsonToDoctor(obj: JSONObject): Doctor = Doctor(
-        id = obj.optString("id", UUID.randomUUID().toString()),
+    private fun jsonToDoctor(obj: JSONObject, indexFallback: Int): Doctor = Doctor(
+        id = obj.optString("id", String.format("doc-%03d", indexFallback + 1)),
         name = obj.optString("name", ""),
         specialization = obj.optString("specialization", ""),
         practiceDays = obj.optString("practice_days", "Senin, Rabu, Jumat"),
@@ -571,7 +610,7 @@ class DoctorClinicRepository {
     }
 
     private fun jsonToService(obj: JSONObject, index: Int): ClinicService {
-        val id = obj.optString("id", UUID.randomUUID().toString())
+        val id = obj.optString("id", String.format("srv-%03d", index + 1))
         val existingLocal = initialServices.find { it.id == id }
         val defaultClinic = existingLocal?.clinicId ?: when (index % 3) {
             0 -> "clinic-001"

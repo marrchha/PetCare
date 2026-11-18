@@ -1,11 +1,16 @@
 package com.example.petcare.ui.feeding
 
+import android.app.TimePickerDialog
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,20 +18,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notes
+import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Scale
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,25 +48,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.petcare.data.model.Pet
+import com.example.petcare.data.repository.PetRepository
 import com.example.petcare.ui.theme.PetCareTheme
 import com.example.petcare.ui.theme.Spacing
+import java.util.Calendar
+import java.util.Locale
 
 /**
- * SCREEN: form Tambah/Ubah Jadwal Makan.
+ * SCREEN: Form Tambah/Ubah Jadwal Makan.
+ * Terintegrasi dengan daftar hewan dari Fitur 5 (PetRepository)
+ * dan TimePickerDialog yang konsisten dengan Fitur Vaksin.
  */
 @Composable
 fun FeedingFormScreen(
@@ -62,6 +85,7 @@ fun FeedingFormScreen(
     viewModel: FeedingViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val registeredPets by PetRepository.petsFlow.collectAsState()
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -72,6 +96,7 @@ fun FeedingFormScreen(
 
     FeedingFormContent(
         state = uiState,
+        registeredPets = registeredPets,
         pet = viewModel.formPet,
         time = viewModel.formTime,
         food = viewModel.formFood,
@@ -89,9 +114,11 @@ fun FeedingFormScreen(
 }
 
 /** CONTENT: stateless. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FeedingFormContent(
     state: FeedingUiState,
+    registeredPets: List<Pet> = emptyList(),
     pet: String,
     time: String,
     food: String,
@@ -107,6 +134,20 @@ fun FeedingFormContent(
     modifier: Modifier = Modifier
 ) {
     val isEdit = state.editingId != null
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    var petDropdownExpanded by remember { mutableStateOf(false) }
+
+    val timePickerDialog = TimePickerDialog(
+        context,
+        { _, hourOfDay, minute ->
+            val formatted = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute)
+            onTimeChange(formatted)
+        },
+        calendar.get(Calendar.HOUR_OF_DAY),
+        calendar.get(Calendar.MINUTE),
+        true
+    )
 
     val flatInputColors = OutlinedTextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -131,7 +172,7 @@ fun FeedingFormContent(
                 .padding(horizontal = 20.dp, vertical = Spacing.md)
         ) {
             FeedingTopBar(
-                title = if (isEdit) "Ubah Jadwal" else "Tambah Jadwal",
+                title = if (isEdit) "Ubah Jadwal (${state.editingId})" else "Tambah Jadwal",
                 onBack = onBack
             )
 
@@ -143,14 +184,13 @@ fun FeedingFormContent(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Isi jam makan, jenis makanan, dan porsi hewanmu",
+                text = "Pilih hewan dari profil hewan, tentukan jam makan, jenis pakan, dan porsinya",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(Spacing.md))
 
-            // ===== PESAN ERROR FLAT =====
             AnimatedVisibility(visible = state.formError != null) {
                 state.formError?.let {
                     FeedingErrorBanner(
@@ -160,31 +200,150 @@ fun FeedingFormContent(
                 }
             }
 
-            FormField(
-                label = "Nama Hewan",
-                value = pet,
-                onValueChange = onPetChange,
-                placeholder = "Contoh: Mochi",
-                icon = Icons.Outlined.Pets,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next
-                ),
-                colors = flatInputColors
+            // Relasi ke Fitur 5: Pilih Nama Hewan dari Data Profil Hewan
+            Text(
+                text = "Nama Hewan (Dari Data Profil Hewan)",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 6.dp, start = Spacing.xs)
             )
+            ExposedDropdownMenuBox(
+                expanded = petDropdownExpanded,
+                onExpandedChange = { petDropdownExpanded = !petDropdownExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = pet,
+                    onValueChange = onPetChange,
+                    placeholder = {
+                        Text(
+                            text = "Pilih hewan terdaftar atau ketik nama...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Pets,
+                            contentDescription = "Nama Hewan",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = petDropdownExpanded)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    ),
+                    colors = flatInputColors,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                )
+
+                if (registeredPets.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = petDropdownExpanded,
+                        onDismissRequest = { petDropdownExpanded = false }
+                    ) {
+                        registeredPets.forEach { item ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = item.name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Text(
+                                            text = "${item.id} • ${item.species} (${item.breed})",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onPetChange(item.name)
+                                    petDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (registeredPets.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    registeredPets.forEach { item ->
+                        val selected = pet.equals(item.name, ignoreCase = true)
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onPetChange(item.name) },
+                            label = {
+                                Text(
+                                    text = "${item.name} (${item.species})",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            shape = RoundedCornerShape(50),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
-            FormField(
-                label = "Jam Makan (HH:mm)",
-                value = time,
-                onValueChange = onTimeChange,
-                placeholder = "07:30",
-                icon = Icons.Outlined.Schedule,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                colors = flatInputColors
+
+            // Jam Makan menggunakan TimePickerDialog (sama dengan Fitur Vaksin)
+            Text(
+                text = "Jam Makan",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 6.dp, start = Spacing.xs)
             )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { timePickerDialog.show() },
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccessTime,
+                        contentDescription = "Pilih Jam Makan",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (time.isNotBlank()) "$time WIB" else "Pilih Jam Makan (Ketuk di sini)",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (time.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal
+                        ),
+                        color = if (time.isNotBlank()) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
             FormField(
                 label = "Jenis Makanan",
@@ -214,7 +373,7 @@ fun FeedingFormContent(
                 value = notes,
                 onValueChange = onNotesChange,
                 placeholder = "Contoh: campur sedikit air hangat",
-                icon = Icons.Outlined.Notes,
+                icon = Icons.AutoMirrored.Outlined.Notes,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done
